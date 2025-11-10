@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from "react-router-dom";   // ✅ EKLENDİ
 import { authAPI } from '../services/api';
 
 function Login() {
+  const navigate = useNavigate();                // ✅ EKLENDİ
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -9,23 +12,11 @@ function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setMessage('');
-    setLoading(true);
-    
-    try {
-      const response = await authAPI.login({ email, password });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      setMessage('✓ Welcome back! Redirecting...');
-      setTimeout(() => {
-        window.location.href = '/products';
-      }, 1500);
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Invalid email or password');
-    } finally {
-      setLoading(false);
-    }
+    // Şimdilik direkt ürünler sayfasına git
+    navigate('/products');
   };
+  
+
 
   return (
     <div style={styles.container}>
@@ -57,30 +48,8 @@ function Login() {
           <h2 style={styles.title}>Welcome Back</h2>
           <p style={styles.subtitle}>Sign in to continue shopping</p>
           
-          <form onSubmit={handleLogin} style={styles.form}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>EMAIL</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                style={styles.input}
-                placeholder="your@email.com"
-              />
-            </div>
+          <form onSubmit={handleLogin} style={styles.form} noValidate>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>PASSWORD</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={styles.input}
-                placeholder="••••••••"
-              />
-            </div>
 
             <button 
               type="submit"
