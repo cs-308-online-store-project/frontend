@@ -49,21 +49,42 @@ function Login() {
           <p style={styles.subtitle}>Sign in to continue shopping</p>
           
           <form onSubmit={handleLogin} style={styles.form} noValidate>
+  <div style={styles.formGroup}>
+    <label style={styles.label}>Email</label>
+    <input
+      type="email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      placeholder="Enter your email"
+      style={styles.input}
+      required
+    />
+  </div>
 
+  <div style={styles.formGroup}>
+    <label style={styles.label}>Password</label>
+    <input
+      type="password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      placeholder="Enter your password"
+      style={styles.input}
+      required
+    />
+  </div>
 
-            <button 
-              type="submit"
-              disabled={loading}
-              style={{
-                ...styles.button,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {loading ? 'SIGNING IN...' : 'SIGN IN'}
-            </button>
-          </form>
-
+  <button
+    type="submit"
+    disabled={loading}
+    style={{
+      ...styles.button,
+      opacity: loading ? 0.7 : 1,
+      cursor: loading ? 'not-allowed' : 'pointer',
+    }}
+  >
+    {loading ? "SIGNING IN..." : "SIGN IN"}
+  </button>
+</form>
           {message && (
             <div style={{
               ...styles.message,
