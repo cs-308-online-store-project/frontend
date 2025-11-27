@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// Backend URL - Port 5000
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -18,19 +17,6 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
-// 401 hatalarını handle et
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Auth API
 export const authAPI = {

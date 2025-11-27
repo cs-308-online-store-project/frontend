@@ -1,135 +1,86 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";   // ✅ EKLENDİ
 import { authAPI } from '../services/api';
 
 function Login() {
-  const navigate = useNavigate();
+  const navigate = useNavigate();                // ✅ EKLENDİ
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await authAPI.login({ email, password });
-      
-      localStorage.setItem('token', response.data.token);
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-      
-      navigate('/products');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Invalid email or password');
-    } finally {
-      setLoading(false);
-    }
+    // Şimdilik direkt ürünler sayfasına git
+    navigate('/products');
   };
+  
+
 
   return (
     <div style={styles.container}>
-      {/* Left Side - Brand Section */}
+      {/* Left side - Brand/Image */}
       <div style={styles.leftSide}>
         <div style={styles.brandSection}>
           <h1 style={styles.brandName}>URBAN THREADS</h1>
           <p style={styles.brandTagline}>Premium Clothing for Modern Life</p>
-          
           <div style={styles.brandFeatures}>
             <div style={styles.feature}>
               <span style={styles.icon}>👕</span>
-              <p style={styles.featureText}>Premium T-Shirts</p>
+              <p>Premium T-Shirts</p>
             </div>
             <div style={styles.feature}>
               <span style={styles.icon}>🧥</span>
-              <p style={styles.featureText}>Cozy Sweatshirts</p>
+              <p>Cozy Sweatshirts</p>
             </div>
             <div style={styles.feature}>
               <span style={styles.icon}>👖</span>
-              <p style={styles.featureText}>Stylish Jeans</p>
+              <p>Stylish Jeans</p>
             </div>
           </div>
-
-          <div style={styles.decorativePattern}></div>
         </div>
       </div>
 
-      {/* Right Side - Login Form */}
+      {/* Right side - Login Form */}
       <div style={styles.rightSide}>
         <div style={styles.formContainer}>
           <h2 style={styles.title}>Welcome Back</h2>
           <p style={styles.subtitle}>Sign in to continue shopping</p>
+          
+          <form onSubmit={handleLogin} style={styles.form} noValidate>
 
-          {error && (
-            <div style={styles.errorBox}>
-              ⚠️ {error}
-            </div>
-          )}
 
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>EMAIL ADDRESS</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                style={styles.input}
-                disabled={loading}
-                required
-              />
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>PASSWORD</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                style={styles.input}
-                disabled={loading}
-                required
-              />
-            </div>
-
-            <button
+            <button 
               type="submit"
               disabled={loading}
               style={{
                 ...styles.button,
-                ...(loading ? styles.buttonDisabled : {}),
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.target.style.backgroundColor = '#333';
-                  e.target.style.transform = 'translateY(-2px)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.target.style.backgroundColor = '#1a1a1a';
-                  e.target.style.transform = 'translateY(0)';
-                }
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
               {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
           </form>
 
+          {message && (
+            <div style={{
+              ...styles.message,
+              backgroundColor: message.includes('✓') ? '#d4edda' : '#fff3cd',
+              color: message.includes('✓') ? '#155724' : '#856404',
+              border: message.includes('✓') ? '1px solid #c3e6cb' : '1px solid #ffeaa7'
+            }}>
+              {message}
+            </div>
+          )}
+
           <div style={styles.footer}>
             <p style={styles.footerText}>
               Don't have an account?{' '}
-              <Link to="/register" style={styles.link}>
-                Sign up
-              </Link>
+              <a href="/register" style={styles.link}>Sign up</a>
             </p>
-            <Link to="/forgot-password" style={styles.forgotLink}>
-              Forgot password?
-            </Link>
+            <a href="/forgot-password" style={styles.forgotLink}>Forgot password?</a>
           </div>
 
           <div style={styles.divider}>
@@ -153,8 +104,6 @@ const styles = {
     minHeight: '100vh',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
   },
-  
-  // LEFT SIDE - BRAND
   leftSide: {
     flex: 1,
     background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
@@ -199,21 +148,6 @@ const styles = {
     display: 'block',
     marginBottom: '0.5rem',
   },
-  featureText: {
-    fontSize: '0.9rem',
-    margin: 0,
-  },
-  decorativePattern: {
-    position: 'absolute',
-    width: '400px',
-    height: '400px',
-    borderRadius: '50%',
-    background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)',
-    top: '-100px',
-    right: '-100px',
-  },
-
-  // RIGHT SIDE - FORM
   rightSide: {
     flex: 1,
     display: 'flex',
@@ -241,16 +175,6 @@ const styles = {
     fontSize: '0.95rem',
     color: '#666',
     marginBottom: '2rem',
-  },
-  errorBox: {
-    backgroundColor: '#fff3cd',
-    border: '1px solid #ffeaa7',
-    color: '#856404',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    fontSize: '0.9rem',
-    fontWeight: '500',
   },
   form: {
     display: 'flex',
@@ -290,11 +214,14 @@ const styles = {
     marginTop: '0.5rem',
     transition: 'all 0.3s ease',
     textTransform: 'uppercase',
-    cursor: 'pointer',
   },
-  buttonDisabled: {
-    backgroundColor: '#999',
-    cursor: 'not-allowed',
+  message: {
+    marginTop: '1.5rem',
+    padding: '1rem',
+    borderRadius: '8px',
+    textAlign: 'center',
+    fontSize: '0.9rem',
+    fontWeight: '500',
   },
   footer: {
     marginTop: '2rem',
@@ -341,19 +268,5 @@ const styles = {
     paddingLeft: '0.5rem',
   },
 };
-
-// CSS for input focus effect
-const styleSheet = document.styleSheets[0];
-if (styleSheet) {
-  try {
-    styleSheet.insertRule(`
-      input:focus {
-        border-color: #1a1a1a !important;
-      }
-    `, styleSheet.cssRules.length);
-  } catch (e) {
-    // Ignore if rule already exists
-  }
-}
 
 export default Login;
