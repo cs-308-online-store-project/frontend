@@ -116,3 +116,54 @@ button:active:not(:disabled) {
 }
 
 
+nav a {
+  position: relative;
+  padding-bottom: 4px;
+}
+
+nav a::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0%;
+  height: 1px;
+  background-color: #111;
+  transition: width 0.25s ease;
+}
+
+nav a:hover::after {
+  width: 100%;
+}
+/* --- OUT OF STOCK BADGE --- */
+.badge-out-of-stock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #d90429;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Product out of stock blur */
+.product-card.out-of-stock {
+  opacity: 0.65;
+  pointer-events: none; /* Tıklanmaz */
+}
+
+/* Warning under price */
+.stock-warning {
+  color: #c9184a;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Disabled Add button */
+.add-btn:disabled {
+  background: #aaa !important;
+  cursor: not-allowed;
+}

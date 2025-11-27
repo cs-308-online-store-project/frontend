@@ -1,7 +1,7 @@
 // src/pages/ProductDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { productsAPI } from "../services/api";
+import { productsAPI, cartAPI } from "../services/api";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -16,7 +16,7 @@ export default function ProductDetail() {
   const [wish, setWish] = useState(false);
   const [hero, setHero] = useState("");
 
-  const stock = product?.stock ?? product?.quantity ?? 0;
+  const stock = product?.quantity_in_stock ?? product?.stock ?? product?.quantity ?? 0;
   const out = stock <= 0;
 
   const sizes = useMemo(
@@ -74,19 +74,41 @@ export default function ProductDetail() {
     setHero(p?.image_url || p?.image || `https://picsum.photos/seed/${p?.id}/1400/1400`);
   }
 
-  function addToCart() {
+  // ✅ DEBUG: Backend'e bağlı addToCart fonksiyonu
+  async function addToCart() {
     if (out) return;
-    const prev = JSON.parse(localStorage.getItem("cart") || "[]");
-    prev.push({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image_url: hero,
-      size,
-      qty,
+    
+    // Debug: ne gönderiyoruz bakalım
+    console.log('🛒 Adding to cart:', {
+      productId: product.id,
+      quantity: qty,
+      productIdType: typeof product.id,
+      quantityType: typeof qty,
+      product: product
     });
-    localStorage.setItem("cart", JSON.stringify(prev));
-    alert("Added to bag 🛍️");
+    
+    try {
+      // Backend'e gönder - Number'a çevir
+      const response = await cartAPI.addToCart(Number(product.id), Number(qty));
+      
+      console.log('✅ Cart response:', response.data);
+      
+      // Başarılı olursa kullanıcıya bildir
+      alert("✅ Added to bag 🛍️");
+      
+    } catch (error) {
+      console.error('❌ Error adding to cart:', error);
+      console.error('Error response:', error.response?.data);
+      
+      if (error.response?.status === 401) {
+        alert("⚠️ Please login first");
+        navigate('/login');
+      } else if (error.response?.status === 400) {
+        alert("❌ " + (error.response?.data?.message || "Invalid product or quantity"));
+      } else {
+        alert("❌ Failed to add to cart. Please try again.");
+      }
+    }
   }
 
   if (loading) return <PageShell><div style={S.skelHero} /><div style={S.skelCard} /></PageShell>;

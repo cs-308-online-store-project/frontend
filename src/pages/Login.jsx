@@ -1,6 +1,5 @@
-// src/pages/Login.jsx
 import { useState } from 'react';
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { authAPI } from '../services/api';
 
 function Login() {
@@ -8,30 +7,41 @@ function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');   // hem hata hem info için
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      setMessage('❌ Please fill in all fields');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
     try {
-      const res = await authAPI.login({ email, password });
-
-      // Token + user bilgilerini kaydet
-      localStorage.setItem('token', res.data.token);
-      if (res.data.user) {
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+      const response = await authAPI.login({ email, password });
+      
+      // Token'ı localStorage'a kaydet
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        setMessage('✓ Login successful! Redirecting...');
+        
+        // 1 saniye sonra products sayfasına git
+        setTimeout(() => {
+          navigate('/products');
+        }, 1000);
       }
-
-      // Başarılı login -> products sayfasına git
-      navigate('/products');
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        'Invalid email or password';
-      setMessage(`⚠️ ${msg}`);
+    } catch (error) {
+      console.error('Login error:', error);
+      setMessage(
+        error.response?.data?.message || 
+        '❌ Login failed. Please check your credentials.'
+      );
     } finally {
       setLoading(false);
     }
@@ -66,74 +76,64 @@ function Login() {
         <div style={styles.formContainer}>
           <h2 style={styles.title}>Welcome Back</h2>
           <p style={styles.subtitle}>Sign in to continue shopping</p>
-
-          {message && (
-            <div
-              style={{
-                ...styles.message,
-                backgroundColor: message.startsWith('⚠️')
-                  ? '#fff3cd'
-                  : '#d4edda',
-                color: message.startsWith('⚠️') ? '#856404' : '#155724',
-                border: message.startsWith('⚠️')
-                  ? '1px solid #ffeaa7'
-                  : '1px solid #c3e6cb',
-              }}
-            >
-              {message}
-            </div>
-          )}
-
+          
           <form onSubmit={handleLogin} style={styles.form} noValidate>
+            {/* EMAIL INPUT - EKLENDİ */}
             <div style={styles.formGroup}>
-              <label style={styles.label}>EMAIL ADDRESS</label>
+              <label style={styles.label}>EMAIL</label>
               <input
                 type="email"
-                style={styles.input}
-                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
+                placeholder="your.email@example.com"
+                style={styles.input}
                 required
               />
             </div>
 
+            {/* PASSWORD INPUT - EKLENDİ */}
             <div style={styles.formGroup}>
               <label style={styles.label}>PASSWORD</label>
               <input
                 type="password"
-                style={styles.input}
-                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
+                placeholder="Enter your password"
+                style={styles.input}
                 required
               />
             </div>
 
-            <button
+            <button 
               type="submit"
               disabled={loading}
               style={{
                 ...styles.button,
                 opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
               {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </button>
           </form>
 
+          {message && (
+            <div style={{
+              ...styles.message,
+              backgroundColor: message.includes('✓') ? '#d4edda' : '#fff3cd',
+              color: message.includes('✓') ? '#155724' : '#856404',
+              border: message.includes('✓') ? '1px solid #c3e6cb' : '1px solid #ffeaa7'
+            }}>
+              {message}
+            </div>
+          )}
+
           <div style={styles.footer}>
             <p style={styles.footerText}>
               Don't have an account?{' '}
-              <Link to="/register" style={styles.link}>
-                Sign up
-              </Link>
+              <a href="/register" style={styles.link}>Sign up</a>
             </p>
-            <Link to="/forgot-password" style={styles.forgotLink}>
-              Forgot password?
-            </Link>
+            <a href="/forgot-password" style={styles.forgotLink}>Forgot password?</a>
           </div>
 
           <div style={styles.divider}>
@@ -269,7 +269,7 @@ const styles = {
     textTransform: 'uppercase',
   },
   message: {
-    marginBottom: '1rem',
+    marginTop: '1.5rem',
     padding: '1rem',
     borderRadius: '8px',
     textAlign: 'center',

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';   // 🔥 doğru backend portu
+const API_BASE_URL = 'http://localhost:9000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -39,3 +39,14 @@ export const productsAPI = {
 };
 
 export default api;
+
+// Cart API
+export const cartAPI = {
+  getCart: () => api.get('/cart'),
+  addToCart: (productId, quantity) => 
+    api.post('/cart/add', { productId, quantity }),
+  updateQuantity: (itemId, quantity) => 
+    api.put(`/cart/items/${itemId}`, { quantity }),
+  removeItem: (itemId) => 
+    api.delete(`/cart/items/${itemId}`),
+};

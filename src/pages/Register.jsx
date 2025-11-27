@@ -1,41 +1,73 @@
-// src/pages/Register.jsx
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import { authAPI } from '../services/api';
 
 function Register() {
   const navigate = useNavigate();
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');  // hata / başarı mesajı
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+      setMessage('❌ Please fill in all fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setMessage('❌ Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setMessage('❌ Password must be at least 6 characters');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
     try {
-      // 1) Kullanıcıyı oluştur
-      await authAPI.register({ name, email, password });
-
-      // 2) Hemen login ol (backend register'da token dönmüyor)
-      const loginRes = await authAPI.login({ email, password });
-
-      localStorage.setItem('token', loginRes.data.token);
-      if (loginRes.data.user) {
-        localStorage.setItem('user', JSON.stringify(loginRes.data.user));
+      const response = await authAPI.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      });
+      
+      // Token'ı localStorage'a kaydet
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        setMessage('✓ Registration successful! Welcome to Urban Threads! 🎉');
+        
+        // 1.5 saniye sonra products sayfasına git
+        setTimeout(() => {
+          navigate('/products');
+        }, 1500);
       }
-
-      // 3) Ürünlere yönlendir
-      navigate('/products');
-    } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        'Registration failed';
-      setMessage(`⚠️ ${msg}`);
+    } catch (error) {
+      console.error('Register error:', error);
+      setMessage(
+        error.response?.data?.message || 
+        '❌ Registration failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -43,94 +75,128 @@ function Register() {
 
   return (
     <div style={styles.container}>
+      {/* Left side - Brand/Image */}
       <div style={styles.leftSide}>
         <div style={styles.brandSection}>
           <h1 style={styles.brandName}>URBAN THREADS</h1>
-          <p style={styles.brandTagline}>Join our community of modern shoppers</p>
+          <p style={styles.brandTagline}>Join Our Fashion Community</p>
+          <div style={styles.brandFeatures}>
+            <div style={styles.feature}>
+              <span style={styles.icon}>🎁</span>
+              <p>Welcome Bonus</p>
+            </div>
+            <div style={styles.feature}>
+              <span style={styles.icon}>🚚</span>
+              <p>Free Shipping</p>
+            </div>
+            <div style={styles.feature}>
+              <span style={styles.icon}>⭐</span>
+              <p>Exclusive Deals</p>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Right side - Register Form */}
       <div style={styles.rightSide}>
         <div style={styles.formContainer}>
           <h2 style={styles.title}>Create Account</h2>
-          <p style={styles.subtitle}>Sign up to start shopping</p>
-
-          {message && (
-            <div
-              style={{
-                ...styles.message,
-                backgroundColor: message.startsWith('⚠️')
-                  ? '#fff3cd'
-                  : '#d4edda',
-                color: message.startsWith('⚠️') ? '#856404' : '#155724',
-                border: message.startsWith('⚠️')
-                  ? '1px solid #ffeaa7'
-                  : '1px solid #c3e6cb',
-              }}
-            >
-              {message}
-            </div>
-          )}
-
+          <p style={styles.subtitle}>Start your style journey today</p>
+          
           <form onSubmit={handleRegister} style={styles.form} noValidate>
+            {/* NAME INPUT */}
             <div style={styles.formGroup}>
               <label style={styles.label}>FULL NAME</label>
               <input
                 type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="John Doe"
                 style={styles.input}
-                placeholder="Enter your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={loading}
                 required
               />
             </div>
 
+            {/* EMAIL INPUT */}
             <div style={styles.formGroup}>
-              <label style={styles.label}>EMAIL ADDRESS</label>
+              <label style={styles.label}>EMAIL</label>
               <input
                 type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="your.email@example.com"
                 style={styles.input}
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
                 required
               />
             </div>
 
+            {/* PASSWORD INPUT */}
             <div style={styles.formGroup}>
               <label style={styles.label}>PASSWORD</label>
               <input
                 type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Minimum 6 characters"
                 style={styles.input}
-                placeholder="Create a password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
                 required
               />
             </div>
 
-            <button
+            {/* CONFIRM PASSWORD INPUT */}
+            <div style={styles.formGroup}>
+              <label style={styles.label}>CONFIRM PASSWORD</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Re-enter your password"
+                style={styles.input}
+                required
+              />
+            </div>
+
+            <button 
               type="submit"
               disabled={loading}
               style={{
                 ...styles.button,
                 opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
-              {loading ? 'CREATING ACCOUNT...' : 'SIGN UP'}
+              {loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
             </button>
           </form>
+
+          {message && (
+            <div style={{
+              ...styles.message,
+              backgroundColor: message.includes('✓') ? '#d4edda' : '#fff3cd',
+              color: message.includes('✓') ? '#155724' : '#856404',
+              border: message.includes('✓') ? '1px solid #c3e6cb' : '1px solid #ffeaa7'
+            }}>
+              {message}
+            </div>
+          )}
 
           <div style={styles.footer}>
             <p style={styles.footerText}>
               Already have an account?{' '}
-              <Link to="/login" style={styles.link}>
-                Sign in
-              </Link>
+              <a href="/login" style={styles.link}>Sign in</a>
+            </p>
+          </div>
+
+          <div style={styles.terms}>
+            <p style={styles.termsText}>
+              By creating an account, you agree to our{' '}
+              <a href="/terms" style={styles.termsLink}>Terms of Service</a>
+              {' '}and{' '}
+              <a href="/privacy" style={styles.termsLink}>Privacy Policy</a>
             </p>
           </div>
         </div>
@@ -153,8 +219,11 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '3rem',
+    position: 'relative',
+    overflow: 'hidden',
   },
   brandSection: {
+    zIndex: 1,
     maxWidth: '500px',
   },
   brandName: {
@@ -172,6 +241,19 @@ const styles = {
     color: '#b0b0b0',
     marginBottom: '3rem',
     letterSpacing: '0.05em',
+  },
+  brandFeatures: {
+    display: 'flex',
+    gap: '2rem',
+    flexWrap: 'wrap',
+  },
+  feature: {
+    textAlign: 'center',
+  },
+  icon: {
+    fontSize: '3rem',
+    display: 'block',
+    marginBottom: '0.5rem',
   },
   rightSide: {
     flex: 1,
@@ -204,7 +286,7 @@ const styles = {
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.5rem',
+    gap: '1.2rem',
   },
   formGroup: {
     display: 'flex',
@@ -241,12 +323,13 @@ const styles = {
     textTransform: 'uppercase',
   },
   message: {
-    marginBottom: '1rem',
+    marginTop: '1.5rem',
     padding: '1rem',
     borderRadius: '8px',
     textAlign: 'center',
     fontSize: '0.9rem',
     fontWeight: '500',
+    animation: 'slideDown 0.3s ease-out',
   },
   footer: {
     marginTop: '2rem',
@@ -261,6 +344,19 @@ const styles = {
     textDecoration: 'none',
     fontWeight: '600',
     borderBottom: '1px solid #1a1a1a',
+  },
+  terms: {
+    marginTop: '1.5rem',
+    textAlign: 'center',
+  },
+  termsText: {
+    fontSize: '0.75rem',
+    color: '#999',
+    lineHeight: '1.5',
+  },
+  termsLink: {
+    color: '#666',
+    textDecoration: 'underline',
   },
 };
 
