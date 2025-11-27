@@ -38,8 +38,6 @@ export const productsAPI = {
   getById: (id) => api.get(`/products/${id}`),
 };
 
-export default api;
-
 // Cart API
 export const cartAPI = {
   getCart: () => api.get('/cart'),
@@ -50,3 +48,15 @@ export const cartAPI = {
   removeItem: (itemId) => 
     api.delete(`/cart/items/${itemId}`),
 };
+
+// Order API
+export const orderAPI = {
+  createOrder: (userId, address) => 
+    api.post('/orders', { userId, address }),
+  getOrders: () => 
+    api.get('/orders'),
+  getOrderById: (orderId) => 
+    api.get(`/orders/${orderId}`),
+};
+
+export default api;

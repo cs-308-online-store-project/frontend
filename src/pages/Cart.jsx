@@ -1,11 +1,13 @@
 // src/pages/Cart.jsx
 import { useState, useEffect } from "react";
 import { cartAPI } from "../services/api";
+import { useNavigate } from "react-router-dom";
 
 export default function Cart() {
   const [cart, setCart] = useState({ items: [], total_price: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // Fetch cart from backend
   const fetchCart = async () => {
@@ -150,7 +152,13 @@ export default function Cart() {
               <span>${cart.total_price.toFixed(2)}</span>
             </div>
 
-            <button style={S.checkout}>Proceed to Checkout</button>
+            <button
+              style={S.checkout}
+              onClick={() => navigate('/checkout')}
+            >
+              Proceed to Checkout
+            </button>  
+
           </div>
         </div>
       )}
