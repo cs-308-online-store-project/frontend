@@ -9,6 +9,7 @@ export default function OrderDetail() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     fetchOrderDetail();
@@ -25,6 +26,40 @@ export default function OrderDetail() {
       console.error('Error fetching order detail:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateInvoice = async () => {
+    setGenerating(true);
+    try {
+      const response = await orderAPI.generateInvoice(order.id);
+      alert('✅ Invoice generated successfully!');
+      // Refresh order data
+      fetchOrderDetail();
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      alert('❌ Failed to generate invoice');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    try {
+      const response = await orderAPI.downloadInvoice(order.id);
+      
+      // Create blob URL and download
+      const url = window.URL.createObjectURL(response.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice_${order.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      alert('❌ Failed to download invoice');
     }
   };
 
@@ -134,6 +169,30 @@ export default function OrderDetail() {
               </span>
             </div>
           </div>
+
+          {/* Invoice Buttons */}
+          <div style={S.invoiceButtons}>
+            <button 
+              onClick={handleGenerateInvoice}
+              disabled={generating}
+              style={{
+                ...S.generateBtn,
+                opacity: generating ? 0.6 : 1,
+                cursor: generating ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {generating ? '⏳ Generating...' : '📄 Generate Invoice'}
+            </button>
+            
+            {order.invoice_pdf && (
+              <button 
+                onClick={handleDownloadInvoice}
+                style={S.downloadBtn}
+              >
+                ⬇️ Download Invoice
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Order Status */}
@@ -207,6 +266,36 @@ const S = {
 
   summaryBox: { padding: "1rem", background: "#f9f9f9", borderRadius: "8px" },
   summaryRow: { display: "flex", justifyContent: "space-between", padding: "0.5rem 0" },
+
+  invoiceButtons: {
+    marginTop: '1.5rem',
+    display: 'flex',
+    gap: '1rem',
+    flexDirection: 'column'
+  },
+
+  generateBtn: {
+    padding: '1rem',
+    background: '#111',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s'
+  },
+
+  downloadBtn: {
+    padding: '1rem',
+    background: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: '600',
+    cursor: 'pointer'
+  },
 
   timeline: {},
   timelineItem: { display: "flex", gap: "1rem", marginBottom: "1.5rem" },
