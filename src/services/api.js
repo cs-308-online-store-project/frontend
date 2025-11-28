@@ -57,6 +57,12 @@ export const orderAPI = {
     api.get('/orders'),
   getOrderById: (orderId) => 
     api.get(`/orders/${orderId}`),
+  
+  // Invoice endpoints
+  generateInvoice: (orderId) =>
+    api.post(`/invoices/${orderId}/generate`),
+  downloadInvoice: (orderId) =>
+    api.get(`/invoices/${orderId}/download`, { responseType: 'blob' }),
 };
 
 export default api;
