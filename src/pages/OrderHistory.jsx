@@ -14,11 +14,20 @@ export default function OrderHistory() {
     fetchOrders();
   }, []);
 
+  // ==============================
+  // GET ORDERS + SORT BY NEWEST
+  // ==============================
   const fetchOrders = async () => {
     try {
       setLoading(true);
       const data = await orderService.getAllOrders();
-      setOrders(data);
+
+     
+      const sorted = [...data].sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
+
+      setOrders(sorted);
       setError(null);
     } catch (err) {
       setError('Failed to load orders. Please try again.');
@@ -28,6 +37,9 @@ export default function OrderHistory() {
     }
   };
 
+  // ==============================
+  // STYLING HELPERS
+  // ==============================
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'Processing':
@@ -52,14 +64,18 @@ export default function OrderHistory() {
     });
   };
 
-  const formatPrice = (price) => {
-    return `$${price.toFixed(2)}`;
-  };
+  const formatPrice = (price) => `$${price.toFixed(2)}`;
 
+  // ==============================
+  // NAVIGATE TO ORDER DETAILS
+  // ==============================
   const handleOrderClick = (orderId) => {
     navigate(`/orders/${orderId}`);
   };
 
+  // ==============================
+  // UI STATES
+  // ==============================
   if (loading) {
     return (
       <div className="order-history-container">
@@ -95,6 +111,9 @@ export default function OrderHistory() {
     );
   }
 
+  // ==============================
+  // MAIN RENDER
+  // ==============================
   return (
     <div className="order-history-container">
       <div className="order-history-header">
@@ -114,6 +133,7 @@ export default function OrderHistory() {
                 <h3 className="order-number">{order.orderNumber}</h3>
                 <p className="order-date">{formatDate(order.date)}</p>
               </div>
+
               <span className={getStatusBadgeClass(order.status)}>
                 {order.status}
               </span>
