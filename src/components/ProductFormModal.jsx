@@ -1,0 +1,235 @@
+// src/components/ProductFormModal.jsx
+import { useState } from "react";
+import { useToast } from "../context/ToastContext";
+
+export default function ProductFormModal({
+  product,
+  onClose,
+  onSave,
+  categories = [],
+}) {
+  const { showToast } = useToast();
+
+  const [form, setForm] = useState({
+    name: product?.name || "",
+    description: product?.description || "",
+    price: product?.price || "",
+    stock: product?.stock || "",
+    category: product?.category || "",
+    model: product?.model || "",
+    serialNumber: product?.serialNumber || "",
+    warranty: product?.warranty || "",
+    distributor: product?.distributor || "",
+    image: product?.image || "",
+  });
+
+  const [imagePreview, setImagePreview] = useState(product?.image || "");
+  const [error, setError] = useState("");
+
+  function updateField(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleImage(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const src = URL.createObjectURL(file);
+      setImagePreview(src);
+      updateField("image", src);
+    }
+  }
+
+  function handleSubmit() {
+    if (!form.name || !form.price || !form.category) {
+      setError("Name, Price, and Category are required.");
+      showToast("Please fill all required fields.", "error");
+      return;
+    }
+    if (form.price <= 0) {
+      setError("Price must be greater than 0.");
+      showToast("Price must be more than 0!", "error");
+      return;
+    }
+
+    onSave(form);
+    showToast(product ? "Product updated!" : "Product added!", "success");
+  }
+
+  return (
+    <div style={S.overlay}>
+      <div style={S.modal}>
+        <h2 style={S.title}>{product ? "Edit Product" : "Add Product"}</h2>
+
+        {error && <p style={S.error}>{error}</p>}
+
+        <div style={S.formGrid}>
+          <input
+            placeholder="Name *"
+            value={form.name}
+            onChange={(e) => updateField("name", e.target.value)}
+            style={S.input}
+          />
+
+          <input
+            placeholder="Price *"
+            type="number"
+            value={form.price}
+            onChange={(e) => updateField("price", e.target.value)}
+            style={S.input}
+          />
+
+          <input
+            placeholder="Stock"
+            type="number"
+            value={form.stock}
+            onChange={(e) => updateField("stock", e.target.value)}
+            style={S.input}
+          />
+
+          {/* ⭐ Dynamic category dropdown */}
+          <select
+            value={form.category}
+            onChange={(e) => updateField("category", e.target.value)}
+            style={S.input}
+          >
+            <option value="">Select Category *</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          <input
+            placeholder="Model"
+            value={form.model}
+            onChange={(e) => updateField("model", e.target.value)}
+            style={S.input}
+          />
+
+          <input
+            placeholder="Serial Number"
+            value={form.serialNumber}
+            onChange={(e) => updateField("serialNumber", e.target.value)}
+            style={S.input}
+          />
+
+          <input
+            placeholder="Warranty"
+            value={form.warranty}
+            onChange={(e) => updateField("warranty", e.target.value)}
+            style={S.input}
+          />
+
+          <input
+            placeholder="Distributor"
+            value={form.distributor}
+            onChange={(e) => updateField("distributor", e.target.value)}
+            style={S.input}
+          />
+
+          <textarea
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => updateField("description", e.target.value)}
+            style={S.textarea}
+          />
+
+          <div>
+            <p>Product Image</p>
+            <input type="file" onChange={handleImage} />
+            {imagePreview && (
+              <img
+                src={imagePreview}
+                alt="preview"
+                style={{ width: 120, marginTop: 10, borderRadius: 8 }}
+              />
+            )}
+          </div>
+        </div>
+
+        <div style={S.actions}>
+          <button style={S.cancelBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button style={S.saveBtn} onClick={handleSubmit}>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===========================
+// Styles
+// ===========================
+const S = {
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.6)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 99,
+  },
+  modal: {
+    background: "#222",
+    padding: "2rem",
+    borderRadius: "12px",
+    width: "600px",
+    color: "white",
+  },
+  title: {
+    fontSize: "1.8rem",
+    marginBottom: "1rem",
+  },
+  formGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "1rem",
+  },
+  input: {
+    padding: "0.8rem",
+    borderRadius: "6px",
+    border: "1px solid #555",
+    background: "#111",
+    color: "white",
+  },
+  textarea: {
+    gridColumn: "1 / 3",
+    padding: "0.8rem",
+    borderRadius: "6px",
+    border: "1px solid #555",
+    background: "#111",
+    color: "white",
+    minHeight: "90px",
+  },
+  error: {
+    color: "#ff5c5c",
+    marginBottom: "0.5rem",
+  },
+  actions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: "1.5rem",
+    gap: "1rem",
+  },
+  cancelBtn: {
+    background: "#555",
+    padding: "0.8rem 1.2rem",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+  },
+  saveBtn: {
+    background: "#4dd0e1",
+    color: "black",
+    padding: "0.8rem 1.2rem",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: 700,
+  },
+};
