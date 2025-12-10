@@ -1,6 +1,9 @@
+// src/components/Navbar.jsx
+import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import HeartIcon from "./icons/HeartIcon";
+import { authAPI } from "../services/api";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -40,6 +43,9 @@ export default function Navbar() {
     { label: "SALE", to: "/products?cat=sale" },
   ];
 
+  const params = new URLSearchParams(location.search);
+  const cat = params.get("cat");
+
   return (
     <nav style={S.nav}>
       {/* BRAND */}
@@ -50,21 +56,14 @@ export default function Navbar() {
       {/* CENTER MENU */}
       <div style={S.centerMenu}>
         {menuItems.map((item) => {
-          const params = new URLSearchParams(location.search);
-          const cat = params.get("cat");
-
-          const isActive =
-            (!cat && item.label === "NEW") ||
-            (cat && item.to.includes(cat));
+          const active =
+            (!cat && item.label === "NEW") || (cat && item.to.includes(cat));
 
           return (
             <Link
               key={item.label}
               to={item.to}
-              style={{
-                ...S.link,
-                ...(isActive ? S.activeLink : {}),
-              }}
+              style={{ ...S.link, ...(active ? S.activeLink : {}) }}
               className="navlink"
             >
               {item.label}
@@ -75,15 +74,46 @@ export default function Navbar() {
 
       {/* RIGHT SECTION */}
       <div style={S.right}>
+
         {/* FAVORITES */}
         <Link to="/favorites" style={S.iconWrapper}>
-          <HeartIcon active={false} size={28} />
+          <HeartIcon active={false} size={26} />
         </Link>
 
-        {/* MY ORDERS */}
-        <Link to="/orders" style={S.linkSmall}>
-          My Orders
-        </Link>
+        {/* USER DROPDOWN */}
+        {isLoggedIn ? (
+          <div style={S.userWrapper}>
+            <button style={S.userButton} onClick={() => setOpen((o) => !o)}>
+              <span style={S.userNameText}>
+                {user?.name || user?.email || "Account"}
+              </span>
+              <span style={S.chevron}>{open ? "▲" : "▼"}</span>
+            </button>
+
+            {open && (
+              <div style={S.dropdown}>
+                <button
+                  style={S.dropdownItem}
+                  onClick={() => {
+                    navigate("/orders");
+                    setOpen(false);
+                  }}
+                >
+                  My Orders
+                </button>
+
+                <button
+                  style={S.dropdownItemDanger}
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link to="/login" style={S.linkSmall}>Login</Link>
+        )}
 
         {/* CART */}
         <Link to="/cart" style={S.cartWrapper}>
@@ -95,7 +125,8 @@ export default function Navbar() {
   );
 }
 
-/* ------- STYLES -------- */
+/* -------- STYLES -------- */
+
 const S = {
   nav: {
     width: "100%",
@@ -106,12 +137,10 @@ const S = {
     position: "sticky",
     top: 0,
     zIndex: 1000,
-
     background: "rgba(255, 255, 255, 0.65)",
     backdropFilter: "blur(12px)",
     borderBottom: "1px solid rgba(150,150,150,0.25)",
   },
-
   brand: {
     position: "absolute",
     left: "40px",
@@ -120,13 +149,11 @@ const S = {
     letterSpacing: "0.22em",
     cursor: "pointer",
   },
-
   centerMenu: {
     display: "flex",
     gap: "3rem",
     alignItems: "center",
   },
-
   link: {
     textDecoration: "none",
     color: "#111",
@@ -135,16 +162,11 @@ const S = {
     letterSpacing: "0.15em",
     paddingBottom: "5px",
     transition: "all 0.25s ease",
-
-    // Hover animation
-    transform: "scale(1)",
   },
-
   activeLink: {
     fontWeight: 800,
     borderBottom: "2px solid #000",
   },
-
   right: {
     position: "absolute",
     right: "40px",
@@ -152,33 +174,75 @@ const S = {
     alignItems: "center",
     gap: "1.5rem",
   },
-
   linkSmall: {
     textDecoration: "none",
     color: "#000",
     fontWeight: 600,
     fontSize: "0.95rem",
-    letterSpacing: "0.10em",
+    letterSpacing: "0.1em",
   },
 
-  iconWrapper: {
+  // ----- DROPDOWN -----
+  userWrapper: { position: "relative" },
+  userButton: {
+    background: "transparent",
+    border: "1px solid #111",
+    color: "#111",
+    padding: "8px 12px",
+    fontSize: "0.9rem",
+    fontWeight: 600,
+    letterSpacing: "0.1em",
     cursor: "pointer",
+    borderRadius: "4px",
     display: "flex",
     alignItems: "center",
-    transition: "transform 0.25s ease",
+    gap: "0.5rem",
   },
+  userNameText: {
+    maxWidth: "140px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  chevron: { fontSize: "0.7rem" },
 
-  cartWrapper: {
-    position: "relative",
-    color: "#111",
+  dropdown: {
+    position: "absolute",
+    top: "110%",
+    right: 0,
+    background: "#fff",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+    borderRadius: "6px",
+    minWidth: "180px",
+    padding: "6px 0",
+    zIndex: 1100,
+  },
+  dropdownItem: {
+    width: "100%",
+    padding: "10px 14px",
+    background: "transparent",
+    border: "none",
     cursor: "pointer",
-    transition: "transform 0.25s ease",
+    fontSize: "0.9rem",
+    textAlign: "left",
+    letterSpacing: "0.05em",
+  },
+  dropdownItemDanger: {
+    width: "100%",
+    padding: "10px 14px",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    color: "#b00020",
+    fontSize: "0.9rem",
+    textAlign: "left",
+    letterSpacing: "0.05em",
   },
 
-  cartIcon: {
-    fontSize: "1.45rem",
-  },
-
+  // CART
+  iconWrapper: { cursor: "pointer" },
+  cartWrapper: { position: "relative", cursor: "pointer" },
+  cartIcon: { fontSize: "1.45rem" },
   badge: {
     position: "absolute",
     top: "-6px",
