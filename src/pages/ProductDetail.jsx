@@ -158,6 +158,19 @@ export default function ProductDetail() {
           <h1 style={S.title}>{product.name}</h1>
           <div style={S.price}>{currency(product.price)}</div>
 
+          {/* NEW: Stock info */}
+          <div style={S.stockRow}>
+            {out ? (
+              <span style={S.stockOut}>Out of stock</span>
+            ) : (
+              <span style={S.stockOk}>
+                {stock} in stock
+                {stock <= 5 && " — almost gone!"}
+              </span>
+            )}
+          </div>
+                    
+
           <div style={S.row}>
             <div style={S.selectWrap}>
               <select
