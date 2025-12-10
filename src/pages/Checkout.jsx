@@ -18,7 +18,12 @@ export default function Checkout() {
     postalCode: '',
     phone: '',
     paymentMethod: 'cash', // cash or credit
-    shippingOption: 'standard' // standard or express
+    shippingOption: 'standard', // standard or express
+    // Credit card fields
+    cardNumber: '',
+    cardExpiry: '',
+    cardCVV: '',
+    cardName: ''
   });
   
   const [errors, setErrors] = useState({});
@@ -66,6 +71,22 @@ export default function Checkout() {
     if (!formData.postalCode.trim()) newErrors.postalCode = 'Postal code is required';
     if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
     
+    // Credit card validation
+    if (formData.paymentMethod === 'credit') {
+      if (!formData.cardNumber.trim() || formData.cardNumber.length < 16) {
+        newErrors.cardNumber = 'Valid card number is required (16 digits)';
+      }
+      if (!formData.cardExpiry.trim() || !/^\d{2}\/\d{2}$/.test(formData.cardExpiry)) {
+        newErrors.cardExpiry = 'Valid expiry date required (MM/YY)';
+      }
+      if (!formData.cardCVV.trim() || formData.cardCVV.length !== 3) {
+        newErrors.cardCVV = 'Valid CVV required (3 digits)';
+      }
+      if (!formData.cardName.trim()) {
+        newErrors.cardName = 'Cardholder name is required';
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -94,11 +115,25 @@ export default function Checkout() {
       // Create full address string
       const fullAddress = `${formData.name}, ${formData.address}, ${formData.city}, ${formData.postalCode}, ${formData.phone}`;
 
+      // Mock payment processing message
+      if (formData.paymentMethod === 'credit') {
+        console.log('💳 Mock payment processing:', {
+          cardNumber: '****' + formData.cardNumber.slice(-4),
+          cardName: formData.cardName,
+          amount: total.toFixed(2)
+        });
+      }
+
       // Create order
       const response = await orderAPI.createOrder(userId, fullAddress);
       
       if (response.data.success) {
         alert('Order placed successfully! 🎉');
+        
+        // Clear cart from localStorage
+        localStorage.setItem("cart", "[]");
+        window.dispatchEvent(new Event("cartUpdated"));
+        
         // Redirect to order confirmation
         navigate(`/orders/${response.data.data.id}`);
       }
@@ -266,35 +301,89 @@ export default function Checkout() {
               {formData.paymentMethod === 'credit' && (
                 <div style={S.creditCard}>
                   <div style={S.formGroup}>
-                    <label style={S.label}>Card Number</label>
+                    <label style={S.label}>Cardholder Name *</label>
                     <input
                       type="text"
-                      placeholder="1234 5678 9012 3456"
+                      name="cardName"
+                      value={formData.cardName}
+                      onChange={handleChange}
+                      placeholder="John Doe"
                       style={S.input}
-                      disabled
                     />
+                    {errors.cardName && <span style={S.error}>{errors.cardName}</span>}
                   </div>
+
+                  <div style={S.formGroup}>
+                    <label style={S.label}>Card Number *</label>
+                    <input
+                      type="text"
+                      name="cardNumber"
+                      value={formData.cardNumber}
+                      onChange={(e) => {
+                        // Only allow numbers and limit to 16 digits
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                        setFormData({ ...formData, cardNumber: value });
+                        if (errors.cardNumber) {
+                          setErrors({ ...errors, cardNumber: '' });
+                        }
+                      }}
+                      placeholder="1234567890123456"
+                      style={S.input}
+                      maxLength={16}
+                    />
+                    {errors.cardNumber && <span style={S.error}>{errors.cardNumber}</span>}
+                  </div>
+
                   <div style={S.row}>
                     <div style={S.formGroup}>
-                      <label style={S.label}>Expiry</label>
+                      <label style={S.label}>Expiry Date *</label>
                       <input
                         type="text"
+                        name="cardExpiry"
+                        value={formData.cardExpiry}
+                        onChange={(e) => {
+                          // Format as MM/YY
+                          let value = e.target.value.replace(/\D/g, '');
+                          if (value.length >= 2) {
+                            value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                          }
+                          setFormData({ ...formData, cardExpiry: value });
+                          if (errors.cardExpiry) {
+                            setErrors({ ...errors, cardExpiry: '' });
+                          }
+                        }}
                         placeholder="MM/YY"
                         style={S.input}
-                        disabled
+                        maxLength={5}
                       />
+                      {errors.cardExpiry && <span style={S.error}>{errors.cardExpiry}</span>}
                     </div>
+
                     <div style={S.formGroup}>
-                      <label style={S.label}>CVV</label>
+                      <label style={S.label}>CVV *</label>
                       <input
                         type="text"
+                        name="cardCVV"
+                        value={formData.cardCVV}
+                        onChange={(e) => {
+                          // Only numbers, max 3 digits
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 3);
+                          setFormData({ ...formData, cardCVV: value });
+                          if (errors.cardCVV) {
+                            setErrors({ ...errors, cardCVV: '' });
+                          }
+                        }}
                         placeholder="123"
                         style={S.input}
-                        disabled
+                        maxLength={3}
                       />
+                      {errors.cardCVV && <span style={S.error}>{errors.cardCVV}</span>}
                     </div>
                   </div>
-                  <p style={S.mockNote}>* Mock payment - no real transaction</p>
+
+                  <p style={S.mockNote}>
+                    💳 Mock payment - no real transaction will be processed
+                  </p>
                 </div>
               )}
             </div>
