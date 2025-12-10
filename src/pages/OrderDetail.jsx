@@ -29,37 +29,15 @@ export default function OrderDetail() {
     }
   };
 
-  const handleGenerateInvoice = async () => {
-    setGenerating(true);
+      const handleGenerateInvoice = async () => {
     try {
-      const response = await orderAPI.generateInvoice(order.id);
-      alert('✅ Invoice generated successfully!');
-      // Refresh order data
-      fetchOrderDetail();
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-      alert('❌ Failed to generate invoice');
+      setGenerating(true);  
+      await orderAPI.generateInvoice(id);  
+      alert('Invoice has been sent to your email! 📧');
+    } catch (err) {
+      alert('Failed to send invoice: ' + err.message);
     } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleDownloadInvoice = async () => {
-    try {
-      const response = await orderAPI.downloadInvoice(order.id);
-      
-      // Create blob URL and download
-      const url = window.URL.createObjectURL(response.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice_${order.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading invoice:', error);
-      alert('❌ Failed to download invoice');
+      setGenerating(false);  
     }
   };
 
@@ -183,15 +161,6 @@ export default function OrderDetail() {
             >
               {generating ? '⏳ Generating...' : '📄 Generate Invoice'}
             </button>
-            
-            {order.invoice_pdf && (
-              <button 
-                onClick={handleDownloadInvoice}
-                style={S.downloadBtn}
-              >
-                ⬇️ Download Invoice
-              </button>
-            )}
           </div>
         </div>
 
@@ -284,17 +253,6 @@ const S = {
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'opacity 0.2s'
-  },
-
-  downloadBtn: {
-    padding: '1rem',
-    background: '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer'
   },
 
   timeline: {},
