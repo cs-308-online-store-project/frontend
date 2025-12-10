@@ -1,11 +1,36 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import HeartIcon from "./icons/HeartIcon";
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+  // Cart state'i oluştur
+  const [cart, setCart] = useState([]);
+
+  // localStorage'dan cart'ı oku ve değişiklikleri dinle
+  useEffect(() => {
+    const updateCart = () => {
+      const cartData = JSON.parse(localStorage.getItem("cart") || "[]");
+      setCart(cartData);
+    };
+
+    // İlk yüklemede oku
+    updateCart();
+
+    // localStorage değişikliklerini dinle (farklı tab'ler arası)
+    window.addEventListener("storage", updateCart);
+    
+    // Custom event dinle (aynı tab içindeki değişiklikler için)
+    window.addEventListener("cartUpdated", updateCart);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("storage", updateCart);
+      window.removeEventListener("cartUpdated", updateCart);
+    };
+  }, []);
 
   const menuItems = [
     { label: "NEW", to: "/products" },
