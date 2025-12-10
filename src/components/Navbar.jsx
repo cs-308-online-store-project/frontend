@@ -1,6 +1,7 @@
 // src/components/Navbar.jsx
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import HeartIcon from "./icons/HeartIcon";
 import { authAPI } from "../services/api";
 
@@ -8,38 +9,31 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-  const token = localStorage.getItem("token");
+  // Cart state'i oluştur
+  const [cart, setCart] = useState([]);
 
-  const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem("user") || "null");
-    } catch {
-      return null;
-    }
-  })();
+  // localStorage'dan cart'ı oku ve değişiklikleri dinle
+  useEffect(() => {
+    const updateCart = () => {
+      const cartData = JSON.parse(localStorage.getItem("cart") || "[]");
+      setCart(cartData);
+    };
 
-  const isLoggedIn = !!token;
-  const [open, setOpen] = useState(false);
+    // İlk yüklemede oku
+    updateCart();
 
-  // ---- LOGOUT ----
-  const handleLogout = async () => {
-    try {
-      // Opsiyonel: backend'e logout isteği
-      // await authAPI.logout();
+    // localStorage değişikliklerini dinle (farklı tab'ler arası)
+    window.addEventListener("storage", updateCart);
+    
+    // Custom event dinle (aynı tab içindeki değişiklikler için)
+    window.addEventListener("cartUpdated", updateCart);
 
-      authAPI.logout(); // token + user siler
-      localStorage.removeItem("cart"); // CART TEMİZLE
-
-      alert("Logged out successfully");
-      navigate("/login");
-    } catch (err) {
-      console.error(err);
-      alert("Logout failed");
-    } finally {
-      setOpen(false);
-    }
-  };
+    // Cleanup
+    return () => {
+      window.removeEventListener("storage", updateCart);
+      window.removeEventListener("cartUpdated", updateCart);
+    };
+  }, []);
 
   const menuItems = [
     { label: "NEW", to: "/products" },

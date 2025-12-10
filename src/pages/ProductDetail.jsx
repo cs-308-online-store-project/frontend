@@ -77,42 +77,46 @@ export default function ProductDetail() {
     setHero(p?.image_url || p?.image || `https://picsum.photos/seed/${p?.id}/1400/1400`);
   }
 
-  // ✅ DEBUG: Backend'e bağlı addToCart fonksiyonu
   async function addToCart() {
-    if (out) return;
+  if (out) return;
+  
+  console.log('🛒 Adding to cart:', {
+    productId: product.id,
+    quantity: qty,
+    productIdType: typeof product.id,
+    quantityType: typeof qty,
+    product: product
+  });
+  
+  try {
+    // Backend'e ekle
+    const response = await cartAPI.addToCart(Number(product.id), Number(qty));
+    console.log('✅ Cart response:', response.data);
     
-    // Debug: ne gönderiyoruz bakalım
-    console.log('🛒 Adding to cart:', {
-      productId: product.id,
-      quantity: qty,
-      productIdType: typeof product.id,
-      quantityType: typeof qty,
-      product: product
-    });
+    // ✅ Cart'ı yeniden çek ve localStorage'a kaydet
+    const cartResponse = await cartAPI.getCart();
+    const cartItems = Array.isArray(cartResponse.data.items) ? cartResponse.data.items : [];
+    localStorage.setItem("cart", JSON.stringify(cartItems));
     
-    try {
-      // Backend'e gönder - Number'a çevir
-      const response = await cartAPI.addToCart(Number(product.id), Number(qty));
-      
-      console.log('✅ Cart response:', response.data);
-      
-      // Başarılı olursa kullanıcıya bildir
-      alert("✅ Added to bag 🛍️");
-      
-    } catch (error) {
-      console.error('❌ Error adding to cart:', error);
-      console.error('Error response:', error.response?.data);
-      
-      if (error.response?.status === 401) {
-        alert("⚠️ Please login first");
-        navigate('/login');
-      } else if (error.response?.status === 400) {
-        alert("❌ " + (error.response?.data?.message || "Invalid product or quantity"));
-      } else {
-        alert("❌ Failed to add to cart. Please try again.");
-      }
+    // ✅ Navbar'a haber ver
+    window.dispatchEvent(new Event("cartUpdated"));
+    
+    alert("✅ Added to bag 🛍️");
+    
+  } catch (error) {
+    console.error('❌ Error adding to cart:', error);
+    console.error('Error response:', error.response?.data);
+    
+    if (error.response?.status === 401) {
+      alert("⚠️ Please login first");
+      navigate('/login');
+    } else if (error.response?.status === 400) {
+      alert("❌ " + (error.response?.data?.message || "Invalid product or quantity"));
+    } else {
+      alert("❌ Failed to add to cart. Please try again.");
     }
   }
+}
 
   if (loading) return <PageShell><div style={S.skelHero} /><div style={S.skelCard} /></PageShell>;
   if (!product) return <PageShell><h2>Product not found</h2></PageShell>;

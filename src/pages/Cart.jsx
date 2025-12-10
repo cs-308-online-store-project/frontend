@@ -16,14 +16,23 @@ export default function Cart() {
       setError(null);
       const response = await cartAPI.getCart();
       setCart(response.data);
-    } catch (err) {
-      console.error("Error fetching cart:", err);
-      setError(err.response?.data?.message || "Failed to load cart");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+    
+    // ✅ Null/invalid items'ları filtrele
+      const cartItems = Array.isArray(response.data.items) ? response.data.items : [];
+      const validItems = cartItems.filter(item => item && item.id && item.productId);
+    
+      localStorage.setItem("cart", JSON.stringify(validItems));
+      window.dispatchEvent(new Event("cartUpdated"));
+    
+      console.log('🛒 Cart updated:', validItems.length, 'items'); // Debug
+    
+  } catch (err) {
+    console.error("Error fetching cart:", err);
+    setError(err.response?.data?.message || "Failed to load cart");
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     fetchCart();
   }, []);
@@ -34,7 +43,7 @@ export default function Cart() {
 
     try {
       await cartAPI.updateQuantity(itemId, newQuantity);
-      await fetchCart(); // Refresh cart
+      await fetchCart(); // Refresh cart (bu zaten event dispatch edecek)
     } catch (err) {
       console.error("Error updating quantity:", err);
       alert("Failed to update quantity");
@@ -45,7 +54,7 @@ export default function Cart() {
   const removeItem = async (itemId) => {
     try {
       await cartAPI.removeItem(itemId);
-      await fetchCart(); // Refresh cart
+      await fetchCart(); // Refresh cart (bu zaten event dispatch edecek)
     } catch (err) {
       console.error("Error removing item:", err);
       alert("Failed to remove item");
