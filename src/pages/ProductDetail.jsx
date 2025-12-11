@@ -1,140 +1,160 @@
-// src/pages/ProductDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { productsAPI, cartAPI } from "../services/api";
-
+import { cartAPI, productsAPI } from "../services/api";
 import ProductReviews from "../components/ProductReviews";
-
 
 export default function ProductDetail() {
   const { id } = useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  const [product, setProduct] = useState(state?.p || null);
-  const [loading, setLoading] = useState(!state?.p);
+  const initialProduct = state?.p || state?.product || null;
+  const [product, setProduct] = useState(initialProduct);
+  const [loading, setLoading] = useState(!initialProduct);
   const [error, setError] = useState("");
   const [qty, setQty] = useState(1);
-  const [size, setSize] = useState("");
-  const [wish, setWish] = useState(false);
-  const [hero, setHero] = useState("");
+  const [hero, setHero] = useState(initialProduct?.image_url || "");
 
-  const stock = product?.quantity_in_stock ?? product?.stock ?? product?.quantity ?? 0;
-  const out = stock <= 0;
-
-  const sizes = useMemo(
-    () => (product?.sizes?.length ? product.sizes : ["XS", "S", "M", "L", "XL"]),
-    [product]
-  );
+  const stock = Math.max(0, Number(product?.quantity_in_stock ?? 0));
+  const out = stock === 0;
 
   const gallery = useMemo(() => {
     const base =
       product?.image_url ||
-      product?.image ||
-      `https://picsum.photos/seed/${id}/1400/1400`;
+      `https://picsum.photos/seed/${product?.id || id || "product"}/1200/1200`;
     const extra = Array.isArray(product?.images) ? product.images : [];
     return [base, ...extra].filter(Boolean);
   }, [product, id]);
 
   useEffect(() => {
-    let ok = true;
+    let active = true;
+
     (async () => {
-      if (state?.p) {
-        hydrate(state.p);
+      const fromState = state?.p || state?.product;
+      if (fromState) {
+        hydrate(fromState);
+        setLoading(false);
         return;
       }
+
       try {
         setLoading(true);
-        const { data } = await productsAPI.getById(id);
-        if (!ok) return;
+        const res = await productsAPI.getById(id);
+        const data = res?.data?.data ?? res?.data;
+        if (!active) return;
         hydrate(data);
-      } catch {
-        if (!ok) return;
-        // Fallback ver
-        hydrate({
-          id,
-          name: `Product #${id}`,
-          description:
-            "Premium fabric. Modern fit. Everyday comfort with clean aesthetics.",
-          price: 69.9,
-          quantity: 0,
-          category_name: "Apparel",
-        });
-        setError("Live API bulunamadı, örnek veri gösteriliyor.");
+      } catch (err) {
+        if (!active) return;
+        setError("Ürün yüklenemedi. Lütfen daha sonra tekrar deneyin.");
       } finally {
-        if (ok) setLoading(false);
+        if (active) setLoading(false);
       }
     })();
+
     return () => {
-      ok = false;
+      active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   function hydrate(p) {
+    if (!p) return;
     setProduct(p);
-    setSize(p?.sizes?.[0] || "M");
-    setHero(p?.image_url || p?.image || `https://picsum.photos/seed/${p?.id}/1400/1400`);
+    setHero(
+      p.image_url || `https://picsum.photos/seed/${p?.id || "product"}/1200/1200`
+    );
+    setQty(1);
   }
 
   async function addToCart() {
-  if (out) return;
-  
-  console.log('🛒 Adding to cart:', {
-    productId: product.id,
-    quantity: qty,
-    productIdType: typeof product.id,
-    quantityType: typeof qty,
-    product: product
-  });
-  
-  try {
-    // Backend'e ekle
-    const response = await cartAPI.addToCart(Number(product.id), Number(qty));
-    console.log('✅ Cart response:', response.data);
+    if (out) return;
     
-    // ✅ Cart'ı yeniden çek ve localStorage'a kaydet
-    const cartResponse = await cartAPI.getCart();
-    const cartItems = Array.isArray(cartResponse.data.items) ? cartResponse.data.items : [];
-    localStorage.setItem("cart", JSON.stringify(cartItems));
+    console.log('🛒 Adding to cart:', {
+      productId: product.id,
+      quantity: qty,
+      productIdType: typeof product.id,
+      quantityType: typeof qty,
+      product: product
+    });
     
-    // ✅ Navbar'a haber ver
-    window.dispatchEvent(new Event("cartUpdated"));
-    
-    alert("✅ Added to bag 🛍️");
-    
-  } catch (error) {
-    console.error('❌ Error adding to cart:', error);
-    console.error('Error response:', error.response?.data);
-    
-    if (error.response?.status === 401) {
-      alert("⚠️ Please login first");
-      navigate('/login');
-    } else if (error.response?.status === 400) {
-      alert("❌ " + (error.response?.data?.message || "Invalid product or quantity"));
-    } else {
-      alert("❌ Failed to add to cart. Please try again.");
+    try {
+      // Backend'e ekle
+      const response = await cartAPI.addToCart(Number(product.id), Number(qty));
+      console.log('✅ Cart response:', response.data);
+      
+      // ✅ Cart'ı yeniden çek ve localStorage'a kaydet
+      const cartResponse = await cartAPI.getCart();
+      const cartItems = Array.isArray(cartResponse.data.items) ? cartResponse.data.items : [];
+      localStorage.setItem("cart", JSON.stringify(cartItems));
+      
+      // ✅ Navbar'a haber ver
+      window.dispatchEvent(new Event("cartUpdated"));
+      
+      alert("✅ Added to bag 🛍️");
+      
+    } catch (error) {
+      console.error('❌ Error adding to cart:', error);
+      console.error('Error response:', error.response?.data);
+      
+      if (error.response?.status === 401) {
+        alert("⚠️ Please login first");
+        navigate('/login');
+      } else if (error.response?.status === 400) {
+        alert("❌ " + (error.response?.data?.message || "Invalid product or quantity"));
+      } else {
+        alert("❌ Failed to add to cart. Please try again.");
+      }
     }
   }
-}
 
-  if (loading) return <PageShell><div style={S.skelHero} /><div style={S.skelCard} /></PageShell>;
-  if (!product) return <PageShell><h2>Product not found</h2></PageShell>;
+  if (loading)
+    return (
+      <PageShell>
+        <div style={S.skelHero} />
+        <div style={S.skelCard} />
+      </PageShell>
+    );
+  if (!product)
+    return (
+      <PageShell>
+        <h2>Product not found</h2>
+      </PageShell>
+    );
+
+  const availabilityText = out ? "Sold Out" : "In Stock";
+  const availabilityStyle = out ? S.availabilityDanger : S.availabilityOk;
+  const totalPrice = (Number(product.price) || 0) * qty;
+  const categoryLabel =
+    product.category?.name ||
+    product.category ||
+    product.category_name ||
+    product.category_id ||
+    "Category";
+  const description = product.description || "Bu ürün için açıklama bulunmuyor.";
+
+  const detailFields = [
+    { label: "Kategori", value: categoryLabel },
+    { label: "Model", value: product.model },
+    { label: "Seri Numarası", value: product.serial_number },
+    { label: "Distribütör", value: product.distributor },
+    { label: "Garanti", value: product.warranty_status ? "Aktif" : "Pasif" },
+    { label: "Stok", value: product.quantity_in_stock },
+    { label: "Oluşturulma", value: product.created_at },
+  ].filter((item) => item.value !== undefined && item.value !== null && item.value !== "");
 
   return (
     <div style={S.container}>
-      {/* Breadcrumb */}
       <div style={S.breadcrumb}>
-        <Link to="/products" style={S.link}>Store</Link>
+        <Link to="/products" style={S.link}>
+          Store
+        </Link>
         <span style={S.crumbSep}>/</span>
-        <span style={S.muted}>{product.category_name || "Category"}</span>
+        <span style={S.muted}>{categoryLabel}</span>
         <span style={S.crumbSep}>/</span>
         <span>{product.name}</span>
       </div>
 
-      {/* Top Grid */}
       <div style={S.topGrid}>
-        {/* LEFT: Gallery */}
         <div style={S.leftCol}>
           <div style={S.heroBox}>
             <img src={hero || gallery[0]} alt={product.name} style={S.heroImg} />
@@ -156,60 +176,55 @@ export default function ProductDetail() {
           )}
         </div>
 
-        {/* RIGHT: Buy panel */}
         <div style={S.rightCol}>
-          <div style={S.brand}>{product.brand || product.category_name || "Brand"}</div>
+          <div style={S.brand}>{product.distributor || categoryLabel}</div>
           <h1 style={S.title}>{product.name}</h1>
           <div style={S.price}>{currency(product.price)}</div>
-
-          {/* NEW: Stock info */}
-          <div style={S.stockRow}>
-            {out ? (
-              <span style={S.stockOut}>Out of stock</span>
-            ) : (
-              <span style={S.stockOk}>
-                {stock} in stock
-                {stock <= 5 && " — almost gone!"}
-              </span>
-            )}
+          <div style={{ ...S.availability, ...availabilityStyle }}>
+            {availabilityText}
+            {!out && stock ? ` • ${stock} adet stokta` : ""}
           </div>
-                    
 
-          <div style={S.row}>
-            <div style={S.selectWrap}>
-              <select
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                disabled={out}
-                style={S.select}
-              >
-                {sizes.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-              <span style={S.chev}>▾</span>
-            </div>
-            <button onClick={() => alert("Size guide to be implemented")} style={S.sizeGuide}>
-              Size guide
-            </button>
-          </div>
+          <p style={S.description}>{description}</p>
 
           <div style={{ ...S.row, marginTop: 12 }}>
             <div style={S.qtyBox}>
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={out} style={S.qtyBtn}>−</button>
+              <button
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                disabled={out || qty <= 1}
+                style={S.qtyBtn}
+              >
+                −
+              </button>
               <input
                 type="number"
                 min={1}
-                max={99}
+                max={Math.max(1, stock || 1)}
                 value={qty}
                 onChange={(e) =>
-                  setQty(Math.max(1, Math.min(99, Number(e.target.value) || 1)))
+                  setQty(
+                    Math.max(
+                      1,
+                      Math.min(Number(e.target.value) || 1, Math.max(1, stock || 1))
+                    )
+                  )
                 }
                 disabled={out}
                 style={S.qtyInput}
               />
-              <button onClick={() => setQty((q) => Math.min(99, q + 1))} disabled={out} style={S.qtyBtn}>+</button>
+              <button
+                onClick={() => setQty((q) => Math.min(Math.max(1, stock || 1), q + 1))}
+                disabled={out || qty >= Math.max(1, stock || 1)}
+                style={S.qtyBtn}
+              >
+                +
+              </button>
             </div>
+          </div>
+
+          <div style={S.totalRow}>
+            <span>Toplam ({qty} adet)</span>
+            <span style={S.totalPrice}>{currency(totalPrice)}</span>
           </div>
 
           <div style={S.actions}>
@@ -220,81 +235,51 @@ export default function ProductDetail() {
             >
               {out ? "Out of stock" : "Add To Bag"}
             </button>
-            <button
-              onClick={() => setWish((v) => !v)}
-              style={S.ghostBtn}
-              aria-pressed={wish}
-            >
-              Wishlist {wish ? "♥" : "♡"}
-            </button>
           </div>
 
           <div style={S.etaBox}>
             <div style={S.muted}>Estimated delivery</div>
             <div>Nov 18 – Nov 21</div>
           </div>
-
-          <div style={{ marginTop: 16 }}>
-            <div style={S.muted}>Also available in</div>
-            <div style={S.alsoRow}>
-              <button onClick={() => setHero(gallery[0])} style={S.alsoBtn}>
-                <img src={gallery[0]} alt="variant" style={S.alsoImg} />
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* DETAILS */}
       <div style={S.detailsGrid}>
         <div>
           <div style={S.kicker}>THE DETAILS</div>
           <div style={S.detailsName}>
-            {product.brand || "Brand"} <br /> {product.name}
+            {product.distributor || categoryLabel} <br /> {product.name}
           </div>
 
-          <div style={S.subTitle}>Highlights</div>
-          <ul style={S.bullets}>
-            <li>black</li>
-            <li>quilted design</li>
-            <li>zip fastening</li>
-            <li>high neck</li>
-            <li>sleeveless</li>
-            <li>logo patch</li>
-          </ul>
+          {detailFields.length > 0 && (
+            <div style={S.detailTable}>
+              {detailFields.map((item) => (
+                <div key={item.label} style={S.detailRow}>
+                  <span style={S.detailLabel}>{item.label}</span>
+                  <span style={S.detailValue}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={S.subTitle}>Description</div>
+          <p style={S.muted}>{description}</p>
         </div>
 
         <div>
-          <div style={S.subTitle}>Composition</div>
-          <p style={S.muted}>Outer: Polyamide 100%</p>
-          <p style={S.muted}>Lining: Polyester 100%</p>
-          <p style={S.muted}>Filling: Duck Down 90%, Duck Feathers 10%</p>
+          <div style={S.subTitle}>Availability</div>
+          <p style={S.muted}>
+            {availabilityText}
+            {!out && stock ? ` (${stock} adet stokta)` : ""}
+          </p>
 
-          <div style={S.subTitle}>Washing instructions</div>
-          <p style={S.muted}>Machine Wash</p>
-
-          <div style={S.subTitle}>SKU</div>
-          <p style={S.muted}>{product.sku || `FF-${product.id}`}</p>
+          <div style={S.subTitle}>Category</div>
+          <p style={S.muted}>{categoryLabel}</p>
         </div>
       </div>
 
-            {/* COMMENTS & RATINGS (UI only) */}
-            <ProductReviews product={product} />
+      <ProductReviews product={product} />
 
-{/* ACCORDION */}
-<Accordion
-  items={[
-    { title: "SIZE & FIT", content: "True to size. Model is 185 cm and wears M." },
-    {
-      title: "DELIVERY, RETURNS & SELLER",
-      content: "Free returns within 14 days. Ships with trusted couriers.",
-    },
-  ]}
-/>
-
-
-
-      {/* ACCORDION */}
       <Accordion
         items={[
           { title: "SIZE & FIT", content: "True to size. Model is 185 cm and wears M." },
@@ -305,18 +290,18 @@ export default function ProductDetail() {
         ]}
       />
 
-      {/* Back link */}
       <div style={{ marginTop: 28 }}>
-        <Link to="/products" style={S.link}>&larr; Back to Products</Link>
+        <Link to="/products" style={S.link}>
+          &larr; Back to Products
+        </Link>
       </div>
 
-      {/* Optional error note */}
-      {error && <div style={{ marginTop: 10, fontSize: 12, color: "#9ca3af" }}>{error}</div>}
+      {error && (
+        <div style={{ marginTop: 10, fontSize: 12, color: "#9ca3af" }}>{error}</div>
+      )}
     </div>
   );
 }
-
-/* ---------- helpers ---------- */
 
 function Accordion({ items }) {
   const [open, setOpen] = useState(0);
@@ -324,10 +309,7 @@ function Accordion({ items }) {
     <div style={S.accWrap}>
       {items.map((it, i) => (
         <div key={i} style={S.accItem}>
-          <button
-            style={S.accHead}
-            onClick={() => setOpen(open === i ? -1 : i)}
-          >
+          <button style={S.accHead} onClick={() => setOpen(open === i ? -1 : i)}>
             <span>{it.title}</span>
             <span style={S.accIcon}>{open === i ? "−" : "+"}</span>
           </button>
@@ -343,11 +325,11 @@ function PageShell({ children }) {
 }
 
 function currency(v) {
-  if (typeof v !== "number") return v;
-  return `${v.toFixed(2)} €`;
+  const num = Number(v);
+  if (!Number.isFinite(num)) return v;
+  return `${num.toFixed(2)} €`;
 }
 
-/* ---------- inline style system ---------- */
 const S = {
   container: { maxWidth: 1240, margin: "0 auto", padding: 24 },
   link: { color: "#111", textDecoration: "none" },
@@ -397,29 +379,33 @@ const S = {
   brand: { fontSize: 14, marginBottom: 6 },
   title: { fontSize: 28, fontWeight: 700, margin: "0 0 6px" },
   price: { fontSize: 22, fontWeight: 700, margin: "8px 0 16px" },
+  description: { color: "#374151", margin: "8px 0 12px", lineHeight: 1.5 },
 
   row: { display: "flex", alignItems: "center", gap: 12 },
-  selectWrap: { position: "relative", flex: 1 },
-  select: {
-    width: "100%",
-    appearance: "none",
-    background: "#fff",
-    border: "1px solid #d1d5db",
-    borderRadius: 10,
-    padding: "12px 14px",
-    fontSize: 14,
-    outline: "none",
-  },
-  chev: { position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#6b7280" },
-  sizeGuide: { background: "none", border: "none", color: "#111", cursor: "pointer" },
 
   qtyBox: { display: "flex", alignItems: "center", gap: 10 },
   qtyBtn: {
-    width: 38, height: 38, border: "1px solid #d1d5db", background: "#fff", borderRadius: 10, cursor: "pointer",
+    width: 38,
+    height: 38,
+    border: "1px solid #d1d5db",
+    background: "#fff",
+    borderRadius: 10,
+    cursor: "pointer",
   },
   qtyInput: {
-    width: 64, height: 38, textAlign: "center", border: "1px solid #d1d5db", borderRadius: 10,
+    width: 64,
+    height: 38,
+    textAlign: "center",
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
   },
+
+  totalRow: { display: "flex", justifyContent: "space-between", marginTop: 8, fontWeight: 600 },
+  totalPrice: { fontSize: 18 },
+
+  availability: { margin: "4px 0 12px", fontWeight: 700 },
+  availabilityOk: { color: "#15803d" },
+  availabilityDanger: { color: "#b91c1c" },
 
   actions: { display: "flex", gap: 12, marginTop: 12 },
   primaryBtn: {
@@ -446,10 +432,6 @@ const S = {
 
   etaBox: { marginTop: 16 },
 
-  alsoRow: { display: "flex", gap: 8, marginTop: 8 },
-  alsoBtn: { border: "1px solid #e5e7eb", padding: 2, borderRadius: 8, background: "#fff" },
-  alsoImg: { width: 52, height: 66, objectFit: "cover", display: "block" },
-
   detailsGrid: {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
@@ -460,19 +442,28 @@ const S = {
   },
   kicker: { fontSize: 12, letterSpacing: "0.08em", color: "#6b7280", marginBottom: 10 },
   detailsName: { fontSize: 20, fontWeight: 700, marginBottom: 16 },
+  detailTable: { display: "flex", flexDirection: "column", gap: 6, margin: "10px 0 18px" },
+  detailRow: { display: "flex", justifyContent: "space-between", gap: 12, borderBottom: "1px solid #e5e7eb", padding: "6px 0" },
+  detailLabel: { color: "#6b7280", fontSize: 13 },
+  detailValue: { fontWeight: 700 },
   subTitle: { fontSize: 14, fontWeight: 700, marginTop: 8, marginBottom: 6 },
-  bullets: { margin: "8px 0 0 16px", padding: 0, listStyle: "disc" },
-
   accWrap: { marginTop: 24, borderTop: "1px solid #e5e7eb" },
   accItem: { borderBottom: "1px solid #e5e7eb" },
   accHead: {
-    width: "100%", textAlign: "left", background: "#fff", border: "none", padding: "18px 0",
-    display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 700, cursor: "pointer",
+    width: "100%",
+    textAlign: "left",
+    background: "#fff",
+    border: "none",
+    padding: "18px 0",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontWeight: 700,
+    cursor: "pointer",
   },
   accIcon: { color: "#6b7280" },
   accBody: { padding: "0 0 18px", color: "#374151" },
 
-  // skeletons
   skelHero: { height: 520, background: "#eef2f7", borderRadius: 10, marginBottom: 24 },
   skelCard: { height: 320, background: "#eef2f7", borderRadius: 10 },
 };

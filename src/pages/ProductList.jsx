@@ -2,43 +2,59 @@ import { useEffect, useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard";
 import { productsAPI } from "../services/api";
 
-const MOCK = [
-  { id: 1, name: "Denim Jacket", price: 89.90, quantity: 8,  category: "Jackets",   image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=800&auto=format" },
-  { id: 2, name: "Wide Jeans",   price: 69.90, quantity: 0,  category: "Jeans",     image: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format" },
-  { id: 3, name: "Sweatshirt",   price: 49.90, quantity: 14, category: "Sweatshirts",image:"https://images.unsplash.com/photo-1520975940209-6c92867fd0f0?q=80&w=800&auto=format" },
-  { id: 4, name: "T-Shirt",      price: 24.90, quantity: 30, category: "T-Shirts",  image: "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=800&auto=format" },
-  { id: 5, name: "Pants",        price: 59.90, quantity: 6,  category: "Pants",     image: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format" },
-  { id: 6, name: "Hoodie",       price: 54.90, quantity: 10, category: "Sweatshirts",image:"https://images.unsplash.com/photo-1520975940209-6c92867fd0f0?q=80&w=800&auto=format" },
-];
-
 export default function ProductList() {
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCat, setActiveCat] = useState("All");
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       try {
         setLoading(true);
+        setError("");
         const res = await productsAPI.getAll();    // GET /products
-        const list = Array.isArray(res.data) ? res.data : [];
-        setAll(list.length ? list : MOCK);         // API boşsa MOCK kullan
-      } catch {
-        setAll(MOCK);                              // API hata → MOCK
+        const payload = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(payload) ? payload : payload?.products ?? [];
+        if (mounted) {
+          setAll(list);
+          if (!list.length) setError("No products found");
+        }
+      } catch (err) {
+        if (mounted) {
+          setError("Products could not be loaded from the API.");
+          setAll([]);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const categories = useMemo(() => {
-    const s = new Set(all.map(p => p.category).filter(Boolean));
+    const s = new Set(
+      all
+        .map((p) => p.category?.name || p.category || p.category_name || p.category_id)
+        .filter(Boolean)
+    );
     return ["All", ...Array.from(s)];
   }, [all]);
 
-  const shown = useMemo(() => (
-    activeCat === "All" ? all : all.filter(p => p.category === activeCat)
-  ), [all, activeCat]);
+  const shown = useMemo(
+    () =>
+      activeCat === "All"
+        ? all
+        : all.filter(
+            (p.category?.name || p.category || p.category_name || p.category_id) ===
+            activeCat
+          ),
+    [all, activeCat]
+  );
 
   return (
     <div className="page">
@@ -64,17 +80,20 @@ export default function ProductList() {
 
         {loading && <div className="center h48"><div className="spinner" /></div>}
 
-        {!loading && shown.length === 0 && (
+        {!loading && error && (
+          <div className="empty">{error}</div>
+        )}
+
+        {!loading && !error && shown.length === 0 && (
           <div className="empty">No products found in <b>{activeCat}</b>.</div>
         )}
 
         {!loading && shown.length > 0 && (
           <div className="grid">
-            {shown.map(p => <ProductCard key={p._id || p.id} p={p} />)}
+            {shown.map(p => <ProductCard key={p._id || p.id} product={p} />)}
           </div>
         )}
       </main>
     </div>
   );
 }
-

@@ -12,18 +12,20 @@ export default function ProductFormModal({
 
   const [form, setForm] = useState({
     name: product?.name || "",
+    model: product?.model || "",
+    serial_number: product?.serial_number || "",
     description: product?.description || "",
     price: product?.price || "",
-    stock: product?.stock || "",
-    category: product?.category || "",
-    model: product?.model || "",
-    serialNumber: product?.serialNumber || "",
-    warranty: product?.warranty || "",
+    quantity_in_stock: product?.quantity_in_stock ?? "",
+    warranty_status: Boolean(product?.warranty_status) || false,
     distributor: product?.distributor || "",
-    image: product?.image || "",
+    category_id: product?.category_id || product?.category?.id || "",
+    image_url: product?.image_url || "",
   });
 
-  const [imagePreview, setImagePreview] = useState(product?.image || "");
+  const [imagePreview, setImagePreview] = useState(
+    product?.image_url || ""
+  );
   const [error, setError] = useState("");
 
   function updateField(field, value) {
@@ -35,13 +37,17 @@ export default function ProductFormModal({
     if (file) {
       const src = URL.createObjectURL(file);
       setImagePreview(src);
-      updateField("image", src);
+      updateField("image_url", src);
     }
   }
 
   function handleSubmit() {
-    if (!form.name || !form.price || !form.category) {
-      setError("Name, Price, and Category are required.");
+    if (
+      !form.name ||
+      !form.price ||
+      !form.image_url
+    ) {
+      setError("Please fill all required fields marked with *.");
       showToast("Please fill all required fields.", "error");
       return;
     }
@@ -51,7 +57,15 @@ export default function ProductFormModal({
       return;
     }
 
-    onSave(form);
+    const payload = {
+      ...form,
+      price: Number(form.price),
+      quantity_in_stock: Number(form.quantity_in_stock) || 0,
+      category_id: form.category_id || null,
+      warranty_status: Boolean(form.warranty_status),
+    };
+
+    onSave(payload);
     showToast(product ? "Product updated!" : "Product added!", "success");
   }
 
@@ -79,26 +93,12 @@ export default function ProductFormModal({
           />
 
           <input
-            placeholder="Stock"
+            placeholder="Quantity in Stock"
             type="number"
-            value={form.stock}
-            onChange={(e) => updateField("stock", e.target.value)}
+            value={form.quantity_in_stock}
+            onChange={(e) => updateField("quantity_in_stock", e.target.value)}
             style={S.input}
           />
-
-          {/* ⭐ Dynamic category dropdown */}
-          <select
-            value={form.category}
-            onChange={(e) => updateField("category", e.target.value)}
-            style={S.input}
-          >
-            <option value="">Select Category *</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
 
           <input
             placeholder="Model"
@@ -109,15 +109,8 @@ export default function ProductFormModal({
 
           <input
             placeholder="Serial Number"
-            value={form.serialNumber}
-            onChange={(e) => updateField("serialNumber", e.target.value)}
-            style={S.input}
-          />
-
-          <input
-            placeholder="Warranty"
-            value={form.warranty}
-            onChange={(e) => updateField("warranty", e.target.value)}
+            value={form.serial_number}
+            onChange={(e) => updateField("serial_number", e.target.value)}
             style={S.input}
           />
 
@@ -128,12 +121,36 @@ export default function ProductFormModal({
             style={S.input}
           />
 
+          {/* ⭐ Dynamic category dropdown */}
+          <select
+            value={form.category_id}
+            onChange={(e) => updateField("category_id", e.target.value)}
+            style={S.input}
+          >
+            <option value="">Select Category</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
           <textarea
             placeholder="Description"
             value={form.description}
             onChange={(e) => updateField("description", e.target.value)}
             style={S.textarea}
           />
+
+          <label style={S.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={form.warranty_status}
+              onChange={(e) => updateField("warranty_status", e.target.checked)}
+              style={{ marginRight: 8 }}
+            />
+            Warranty Active
+          </label>
 
           <div>
             <p>Product Image</p>
@@ -195,6 +212,12 @@ const S = {
     borderRadius: "6px",
     border: "1px solid #555",
     background: "#111",
+    color: "white",
+  },
+  checkboxRow: {
+    gridColumn: "1 / 3",
+    display: "flex",
+    alignItems: "center",
     color: "white",
   },
   textarea: {

@@ -3,13 +3,17 @@ import { useState, useEffect } from "react";
 import { useToast } from "../../context/ToastContext";
 import ProductFormModal from "../../components/ProductFormModal";
 import DeleteConfirm from "../../components/DeleteConfirm";
-
-// ⭐ MOCK ÜRÜNLERİ GERÇEK PRODUCTLIST'TEN AL
-import { PRODUCT_MOCK } from "../../data/productsMock";
+import { productsAPI } from "../../services/api";
 
 // ⭐ Ürünlerden kategori çıkartan fonksiyon
 function extractCategories(list) {
-  return Array.from(new Set(list.map((p) => p.category).filter(Boolean)));
+  return Array.from(
+    new Set(
+      list
+        .map((p) => p.category?.name || p.category || p.category_name || p.category_id)
+        .filter(Boolean)
+    )
+  );
 }
 
 export default function AdminProducts() {
@@ -17,6 +21,7 @@ export default function AdminProducts() {
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -24,35 +29,36 @@ export default function AdminProducts() {
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   // ===========================
-  // LOAD ADMIN MOCK PRODUCTS
+  // LOAD PRODUCTS FROM API
   // ===========================
   useEffect(() => {
-    setTimeout(() => {
-      setProducts([
-        {
-          id: 1,
-          name: "Gaming Mouse",
-          price: 49,
-          stock: 120,
-          category: "Tech",
-          image: "https://via.placeholder.com/150",
-        },
-        {
-          id: 2,
-          name: "Headphones",
-          price: 89,
-          stock: 60,
-          category: "Audio",
-          image: "https://via.placeholder.com/150",
-        },
-      ]);
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await productsAPI.getAll();
+        const payload = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(payload) ? payload : payload?.products ?? [];
+        if (mounted) setProducts(list);
+        if (mounted && !list.length) setError("No products found");
+      } catch (err) {
+        if (mounted) {
+          setError("Products could not be loaded from the API.");
+          setProducts([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
 
-      setLoading(false);
-    }, 500);
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // ⭐ CATEGORY DROPDOWN → ProductList MOCK’tan
-  const categories = extractCategories(PRODUCT_MOCK);
+  // ⭐ CATEGORY DROPDOWN → API verisinden
+  const categories = extractCategories(products);
 
   // ===========================
   // MODALS
@@ -75,25 +81,44 @@ export default function AdminProducts() {
   // ===========================
   // CRUD ACTIONS
   // ===========================
-  function handleSave(newProd) {
-    if (selectedProduct) {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === selectedProduct.id ? newProd : p))
-      );
-      showToast("Product updated!", "success");
-    } else {
-      setProducts((prev) => [...prev, { id: Date.now(), ...newProd }]);
-      showToast("Product added!", "success");
+  async function handleSave(newProd) {
+    try {
+      if (selectedProduct) {
+        const id = selectedProduct.id || selectedProduct._id;
+        const res = await productsAPI.update(id, newProd);
+        const updated = res?.data?.data ?? res?.data ?? { ...newProd, id };
+        setProducts((prev) =>
+          prev.map((p) => (p.id === id || p._id === id ? updated : p))
+        );
+        showToast("Product updated!", "success");
+      } else {
+        const res = await productsAPI.create(newProd);
+        const created = res?.data?.data ?? res?.data ?? { ...newProd, id: Date.now() };
+        setProducts((prev) => [...prev, created]);
+        showToast("Product added!", "success");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Product could not be saved", "error");
+    } finally {
+      setModalOpen(false);
     }
-    setModalOpen(false);
   }
 
-  function handleDelete() {
-    setProducts((prev) =>
-      prev.filter((p) => p.id !== selectedProduct.id)
-    );
-    showToast(`Deleted ${selectedProduct.name}`, "success");
-    setDeleteOpen(false);
+  async function handleDelete() {
+    try {
+      const id = selectedProduct.id || selectedProduct._id;
+      await productsAPI.remove(id);
+      setProducts((prev) =>
+        prev.filter((p) => (p.id || p._id) !== id)
+      );
+      showToast(`Deleted ${selectedProduct.name}`, "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Product could not be deleted", "error");
+    } finally {
+      setDeleteOpen(false);
+    }
   }
 
   return (
@@ -107,6 +132,8 @@ export default function AdminProducts() {
 
       {loading ? (
         <p style={{ opacity: 0.7, fontSize: "1.4rem" }}>Loading products…</p>
+      ) : error ? (
+        <p style={{ color: "#ffb3b3" }}>{error}</p>
       ) : (
         <table style={S.table}>
           <thead>
@@ -115,23 +142,31 @@ export default function AdminProducts() {
               <th style={S.th}>Image</th>
               <th style={S.th}>Name</th>
               <th style={S.th}>Price</th>
-              <th style={S.th}>Stock</th>
+              <th style={S.th}>Quantity</th>
               <th style={S.th}>Category</th>
+              <th style={S.th}>Model</th>
+              <th style={S.th}>Serial #</th>
+              <th style={S.th}>Distributor</th>
+              <th style={S.th}>Warranty</th>
               <th style={S.th}></th>
             </tr>
           </thead>
 
           <tbody>
             {products.map((p) => (
-              <tr key={p.id} style={S.row}>
-                <td style={S.idCol}>{p.id}</td>
+              <tr key={p.id || p._id} style={S.row}>
+                <td style={S.idCol}>{p.id || p._id}</td>
                 <td>
-                  <img src={p.image} alt="" style={S.image} />
+                  <img src={p.image_url || "https://via.placeholder.com/150"} alt="" style={S.image} />
                 </td>
                 <td style={S.bigText}>{p.name}</td>
                 <td style={S.bigText}>${p.price}</td>
-                <td style={S.bigText}>{p.stock}</td>
-                <td style={S.bigText}>{p.category}</td>
+                <td style={S.bigText}>{p.quantity_in_stock ?? 0}</td>
+                <td style={S.bigText}>{p.category?.name || p.category || p.category_name || p.category_id}</td>
+                <td style={S.bigText}>{p.model || "-"}</td>
+                <td style={S.bigText}>{p.serial_number || "-"}</td>
+                <td style={S.bigText}>{p.distributor || "-"}</td>
+                <td style={S.bigText}>{p.warranty_status ? "Active" : "Inactive"}</td>
                 <td style={S.actionCol}>
                   <button style={S.editBtn} onClick={() => openEdit(p)}>
                     Edit

@@ -3,63 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import SortDropdown from "../components/SortDropdown";
-
-const MOCK = [
-  {
-    id: 1,
-    name: "Denim Jacket",
-    price: 89.9,
-    quantity: 8,
-    category_name: "Jackets",
-    image_url:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=800&auto=format",
-  },
-  {
-    id: 2,
-    name: "Wide Jeans",
-    price: 69.9,
-    quantity: 0,
-    category_name: "Jeans",
-    image_url:
-      "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format",
-  },
-  {
-    id: 3,
-    name: "Sweatshirt",
-    price: 49.9,
-    quantity: 14,
-    category_name: "Sweatshirts",
-    image_url:
-      "https://images.unsplash.com/photo-1520975940209-6c92867fd0f0?q=80&w=800&auto=format",
-  },
-  {
-    id: 4,
-    name: "T-Shirt",
-    price: 24.9,
-    quantity: 30,
-    category_name: "T-Shirts",
-    image_url:
-      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?q=80&w=800&auto=format",
-  },
-  {
-    id: 5,
-    name: "Chino Pants",
-    price: 59.9,
-    quantity: 6,
-    category_name: "Pants",
-    image_url:
-      "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format",
-  },
-  {
-    id: 6,
-    name: "Zip Hoodie",
-    price: 54.9,
-    quantity: 10,
-    category_name: "Sweatshirts",
-    image_url:
-      "https://images.unsplash.com/photo-1520975940209-6c92867fd0f0?q=80&w=800&auto=format",
-  },
-];
+import { productsAPI } from "../services/api";
 
 // ✅ Yardımcı: Listeyi sort değerine göre sıralar (UI-only)
 function applySort(items, sortKey) {
@@ -74,17 +18,17 @@ function applySort(items, sortKey) {
     case "name_desc":
       return list.sort((a, b) => b.name.localeCompare(a.name));
     case "popular":
-      // Backend olmadığı için popularity'i quantity üzerinden simüle ediyoruz
-      return list.sort(
-        (a, b) => (b.quantity ?? 0) - (a.quantity ?? 0)
-      );
+      return list.sort((a, b) => getStock(b) - getStock(a));
     case "newest":
-      // MOCK veride id'si büyük olanı "daha yeni" sayıyoruz
-      return list.sort((a, b) => b.id - a.id);
+      return list.sort(
+        (a, b) => Number(b.id || 0) - Number(a.id || 0)
+      );
     default:
       return list;
   }
 }
+
+const getStock = (p = {}) => Number(p.quantity_in_stock ?? 0);
 
 export default function Products() {
   const navigate = useNavigate();
@@ -93,42 +37,63 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [openFilter, setOpenFilter] = useState(null);
   const [sort, setSort] = useState("newest"); // ✅ yeni sort state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      const base = applySort(MOCK, "newest"); // ✅ Default: newest
-      setProducts(base);
-      setFilteredProducts(base);
-      setLoading(false);
-    }, 150);
-    return () => clearTimeout(t);
+    let mounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await productsAPI.getAll();
+        const payload = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(payload) ? payload : payload?.products ?? [];
+        const base = applySort(list, "newest");
+        if (mounted) {
+          setProducts(base);
+          setFilteredProducts(base);
+          if (!list.length) setError("No products found");
+        }
+      } catch (err) {
+        if (mounted) {
+          setError("Products could not be loaded from the API.");
+          setProducts([]);
+          setFilteredProducts([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const toggleSection = (section) =>
     setOpenFilter(openFilter === section ? null : section);
 
-  const handleSearch = (term) => {
-    let base = products;
-
-    if (term) {
-      const q = term.toLowerCase();
-      base = products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.category_name?.toLowerCase().includes(q)
-      );
+  useEffect(() => {
+    let base = [...products];
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      base = base.filter((p) => {
+        const cat = (p.category?.name || p.category || p.category_name || p.category_id || "")
+          .toString()
+          .toLowerCase();
+        return (
+          p.name?.toLowerCase().includes(q) ||
+          cat.includes(q)
+        );
+      });
     }
-
-    // ✅ Arama sonuçlarına mevcut sort'ı uygula
     setFilteredProducts(applySort(base, sort));
-  };
+  }, [products, searchTerm, sort]);
 
-  // ✅ Sort değişince listeyi güncelle
-  const handleSortChange = (sortKey) => {
-    const key = sortKey || "newest";
-    setSort(key);
-    setFilteredProducts((prev) => applySort(prev, key));
-  };
+  const handleSearch = (term) => setSearchTerm(term);
+
+  const handleSortChange = (sortKey) => setSort(sortKey || "newest");
 
   if (loading) return <div style={{ padding: "4rem" }}>Loading...</div>;
 
@@ -193,7 +158,7 @@ export default function Products() {
             >
               <span>Beden</span>
               <span style={styles.plus}>+</span>
-            </div>
+                        </div>
             {openFilter === "size" && (
               <div style={styles.filterItems}>
                 <div style={styles.filterItem}>XS</div>
@@ -218,54 +183,67 @@ export default function Products() {
             {filteredProducts.length} products found
           </p>
 
+          {error && !loading && (
+            <div style={{ margin: "1rem 0", color: "#b91c1c" }}>{error}</div>
+          )}
+
           {/* PRODUCT GRID */}
           <div style={styles.grid}>
-            {filteredProducts.map((product) => (
-              <div
-                key={product.id}
-                style={styles.card}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-8px)";
-                  e.currentTarget.style.boxShadow =
-                    "0 12px 25px rgba(0,0,0,0.12)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow =
-                    "0 2px 6px rgba(0,0,0,0.06)";
-                }}
-                onClick={() =>
-                  navigate(`/products/${product.id}`, {
-                    state: { p: product },
-                  })
-                }
-              >
-                <div style={styles.imageBox}>
-                  {product.quantity === 0 && (
-                    <div style={styles.outOfStockBadge}>OUT OF STOCK</div>
-                  )}
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    style={styles.image}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.transform = "scale(1.07)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.transform = "scale(1)")
-                    }
-                  />
-                </div>
+            {filteredProducts.map((product) => {
+              const id = product.id;
+              const image =
+                product.image_url ||
+                `https://picsum.photos/seed/${id || "product"}/800/800`;
+              const category = product.category?.name || product.category || product.category_name || product.category_id;
+              const targetPath = id ? `/products/${id}` : "/products";
 
-                <div style={styles.info}>
-                  <div style={styles.category}>{product.category_name}</div>
-                  <div style={styles.name}>{product.name}</div>
-                  <div style={styles.price}>
-                    ${product.price.toFixed(2)}
+              return (
+                <div
+                  key={id}
+                  style={styles.card}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-8px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 12px 25px rgba(0,0,0,0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow =
+                      "0 2px 6px rgba(0,0,0,0.06)";
+                  }}
+                  onClick={() =>
+                    navigate(targetPath, {
+                      state: { p: product },
+                    })
+                  }
+                >
+                  <div style={styles.imageBox}>
+                    {(product.quantity_in_stock ?? 0) === 0 && (
+                      <div style={styles.outOfStockBadge}>OUT OF STOCK</div>
+                    )}
+                    <img
+                      src={image}
+                      alt={product.name}
+                      style={styles.image}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.transform = "scale(1.07)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.transform = "scale(1)")
+                      }
+                    />
+                  </div>
+
+                  <div style={styles.info}>
+                    <div style={styles.category}>{category}</div>
+                    <div style={styles.name}>{product.name}</div>
+                    <div style={styles.price}>
+                      ${Number(product.price).toFixed(2)}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
