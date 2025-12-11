@@ -28,7 +28,7 @@ function applySort(items, sortKey) {
   }
 }
 
-const getStock = (p = {}) => Number(p.quantity_in_stock ?? 0);
+const getStock = (p = {}) => Number(p.stock ?? 0);
 
 export default function Products() {
   const navigate = useNavigate();
@@ -318,7 +318,7 @@ export default function Products() {
                   }
                 >
                   <div style={styles.imageBox}>
-                    {(product.quantity_in_stock ?? 0) === 0 && (
+                    {(product.stock ?? 0) === 0 && (
                       <div style={styles.outOfStockBadge}>OUT OF STOCK</div>
                     )}
                     <img

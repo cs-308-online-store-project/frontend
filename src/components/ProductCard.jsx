@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 
 export default function ProductCard({ product }) {
   const p = product || {};
-  const stock = Number(p.quantity_in_stock ?? 0);
+  console.log("PRODUCT:", p);
+
+  const stock = Number(p.stock ?? 0);
   const outOfStock = stock <= 0;
   const image =
     p.image_url ||
