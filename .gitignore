@@ -12,8 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Ignore environment files
-.env
 
 # Ignore database files
 data/
