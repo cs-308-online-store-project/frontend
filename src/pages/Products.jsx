@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import SortDropdown from "../components/SortDropdown";
-import { productsAPI } from "../services/api";
+import { categoriesAPI, productsAPI } from "../services/api";
 
 // ✅ Yardımcı: Listeyi sort değerine göre sıralar (UI-only)
 function applySort(items, sortKey) {
@@ -39,6 +39,8 @@ export default function Products() {
   const [sort, setSort] = useState("newest"); // ✅ yeni sort state
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -57,6 +59,7 @@ export default function Products() {
         }
       } catch (err) {
         if (mounted) {
+          console.error("Products could not be loaded from the API.", err);
           setError("Products could not be loaded from the API.");
           setProducts([]);
           setFilteredProducts([]);
@@ -71,11 +74,89 @@ export default function Products() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await categoriesAPI.getAll();
+        const payload = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(payload) ? payload : payload?.categories ?? [];
+        const normalized = list
+          .map((cat) => {
+            const name =
+              cat?.name ||
+              cat?.title ||
+              cat?.label ||
+              cat?.category ||
+              cat?.category_name ||
+              cat?.slug ||
+              cat?.id ||
+              cat?._id;
+
+            return {
+              id:
+                cat?.id ||
+                cat?._id ||
+                cat?.value ||
+                cat?.slug ||
+                cat?.category_id ||
+                name,
+              name,
+            };
+          })
+          .filter((cat) => Boolean(cat.name));
+
+        const unique = [];
+        const seen = new Set();
+        normalized.forEach((cat) => {
+          const key = cat.name.toString().toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            unique.push(cat);
+          }
+        });
+
+        if (mounted) setCategories(unique);
+      } catch (err) {
+        if (mounted) {
+          console.error("Categories could not be loaded from the API.", err);
+          setCategories([]);
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const toggleSection = (section) =>
     setOpenFilter(openFilter === section ? null : section);
 
   useEffect(() => {
     let base = [...products];
+    if (selectedCategory) {
+      const targetId = selectedCategory.id?.toString();
+      const targetName = selectedCategory.name?.toString().toLowerCase();
+
+      base = base.filter((p) => {
+        const productId =
+          p.category?.id?.toString() ||
+          p.category?._id?.toString() ||
+          p.category_id?.toString() ||
+          p.category?.value?.toString();
+
+        const productName =
+          (p.category?.name || p.category || p.category_name || p.category_id || "")
+            .toString()
+            .toLowerCase();
+
+        if (targetId && productId) return productId === targetId;
+        if (targetName) return productName === targetName;
+        return false;
+      });
+    }
+
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       base = base.filter((p) => {
@@ -89,7 +170,7 @@ export default function Products() {
       });
     }
     setFilteredProducts(applySort(base, sort));
-  }, [products, searchTerm, sort]);
+  }, [products, searchTerm, sort, selectedCategory]);
 
   const handleSearch = (term) => setSearchTerm(term);
 
@@ -136,16 +217,35 @@ export default function Products() {
               style={styles.filterHeader}
               onClick={() => toggleSection("category")}
             >
-              <span>Ürün Grubu</span>
+              <span>Kategoriler</span>
               <span style={styles.plus}>+</span>
             </div>
             {openFilter === "category" && (
               <div style={styles.filterItems}>
-                <div style={styles.filterItem}>Jackets</div>
-                <div style={styles.filterItem}>Jeans</div>
-                <div style={styles.filterItem}>Sweatshirts</div>
-                <div style={styles.filterItem}>T-Shirts</div>
-                <div style={styles.filterItem}>Pants</div>
+                <div
+                  style={{
+                    ...styles.filterItem,
+                    ...(!selectedCategory ? styles.activeFilter : {}),
+                  }}
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  Tümü
+                </div>
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id || cat.name}
+                    style={{
+                      ...styles.filterItem,
+                      ...(selectedCategory?.name?.toString().toLowerCase() ===
+                        cat.name.toString().toLowerCase()
+                        ? styles.activeFilter
+                        : {}),
+                    }}
+                    onClick={() => setSelectedCategory(cat)}
+                  >
+                    {cat.name}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -332,6 +432,11 @@ const styles = {
     fontSize: "1.2rem",
     cursor: "pointer",
     color: "#333",
+  },
+
+  activeFilter: {
+    fontWeight: "800",
+    color: "#111",
   },
 
   /* RIGHT SIDE */

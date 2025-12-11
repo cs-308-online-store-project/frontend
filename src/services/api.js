@@ -40,6 +40,11 @@ export const productsAPI = {
   remove: (id) => api.delete(`/products/${id}`),
 };
 
+// Categories API
+export const categoriesAPI = {
+  getAll: () => api.get('/categories'),
+};
+
 // Cart API
 export const cartAPI = {
   getCart: () => api.get('/cart'),
