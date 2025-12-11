@@ -312,8 +312,9 @@ export default function Products() {
               const image =
                 product.image_url ||
                 `https://picsum.photos/seed/${id || "product"}/800/800`;
-              const category = product.category?.name || product.category || product.category_name || product.category_id;
-              const targetPath = id ? `/products/${id}` : "/products";
+                const productIdLabel = id ? `ID: #${id}` : "";
+                const targetPath = id ? `/products/${id}` : "/products";
+                
 
               return (
                 <div
@@ -353,8 +354,8 @@ export default function Products() {
                   </div>
 
                   <div style={styles.info}>
-                    <div style={styles.category}>{category}</div>
-                    <div style={styles.name}>{product.name}</div>
+                  <div style={styles.category}>{productIdLabel}</div>
+                  <div style={styles.name}>{product.name}</div>
                     <div style={styles.price}>
                       ${Number(product.price).toFixed(2)}
                     </div>
