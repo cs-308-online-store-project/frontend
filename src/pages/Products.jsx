@@ -159,16 +159,34 @@ export default function Products() {
 
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
+    
       base = base.filter((p) => {
+        const name = p.name?.toLowerCase() || "";
         const cat = (p.category?.name || p.category || p.category_name || p.category_id || "")
           .toString()
           .toLowerCase();
+    
+        // Product Detail alanlarını dahil ediyoruz:
+        const description = p.description?.toLowerCase() || "";
+        const distributor = p.distributor?.toLowerCase() || "";
+        const model = p.model?.toLowerCase() || "";
+        const serial = p.serial_number?.toLowerCase() || "";
+        const warranty = (p.warranty_status ? "warranty active" : "warranty inactive").toLowerCase();
+        const stock = String(p.stock || "").toLowerCase();
+    
         return (
-          p.name?.toLowerCase().includes(q) ||
-          cat.includes(q)
+          name.includes(q) ||
+          cat.includes(q) ||
+          description.includes(q) ||
+          distributor.includes(q) ||
+          model.includes(q) ||
+          serial.includes(q) ||
+          warranty.includes(q) ||
+          stock.includes(q)
         );
       });
     }
+    
     setFilteredProducts(applySort(base, sort));
   }, [products, searchTerm, sort, selectedCategory]);
 
