@@ -8,32 +8,68 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Cart state'i oluştur
+  // Cart state
   const [cart, setCart] = useState([]);
 
-  // localStorage'dan cart'ı oku ve değişiklikleri dinle
+  // Login state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // User dropdown state
+  const [open, setOpen] = useState(false);
+
+  // READ CART from localStorage + listners
   useEffect(() => {
     const updateCart = () => {
       const cartData = JSON.parse(localStorage.getItem("cart") || "[]");
       setCart(cartData);
     };
 
-    // İlk yüklemede oku
     updateCart();
-
-    // localStorage değişikliklerini dinle (farklı tab'ler arası)
     window.addEventListener("storage", updateCart);
-    
-    // Custom event dinle (aynı tab içindeki değişiklikler için)
     window.addEventListener("cartUpdated", updateCart);
 
-    // Cleanup
     return () => {
       window.removeEventListener("storage", updateCart);
       window.removeEventListener("cartUpdated", updateCart);
     };
   }, []);
 
+  // READ LOGIN STATE from localStorage
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
+
+    setIsLoggedIn(!!token);
+
+    if (userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch {
+        setUser(null);
+      }
+    }
+  }, []);
+
+  // HANDLE LOGOUT
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout?.(); // Backend API varsa çalışır, yoksa sıkıntı yok
+    } catch (err) {
+      console.log("Logout warning:", err);
+    }
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    setIsLoggedIn(false);
+    setUser(null);
+    setOpen(false);
+
+    navigate("/login");
+  };
+
+  // Menu links
   const menuItems = [
     { label: "NEW", to: "/products" },
     { label: "WOMEN", to: "/products?cat=women" },
@@ -73,7 +109,6 @@ export default function Navbar() {
 
       {/* RIGHT SECTION */}
       <div style={S.right}>
-
         {/* FAVORITES */}
         <Link to="/favorites" style={S.iconWrapper}>
           <HeartIcon active={false} size={26} />
@@ -101,17 +136,16 @@ export default function Navbar() {
                   My Orders
                 </button>
 
-                <button
-                  style={S.dropdownItemDanger}
-                  onClick={handleLogout}
-                >
+                <button style={S.dropdownItemDanger} onClick={handleLogout}>
                   Logout
                 </button>
               </div>
             )}
           </div>
         ) : (
-          <Link to="/login" style={S.linkSmall}>Login</Link>
+          <Link to="/login" style={S.linkSmall}>
+            Login
+          </Link>
         )}
 
         {/* CART */}
@@ -125,7 +159,6 @@ export default function Navbar() {
 }
 
 /* -------- STYLES -------- */
-
 const S = {
   nav: {
     width: "100%",
@@ -181,7 +214,7 @@ const S = {
     letterSpacing: "0.1em",
   },
 
-  // ----- DROPDOWN -----
+  // DROPDOWN
   userWrapper: { position: "relative" },
   userButton: {
     background: "transparent",
