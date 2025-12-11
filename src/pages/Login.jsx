@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import { authAPI } from '../services/api';
+import { authAPI, cartAPI } from '../services/api';
 
 function Login() {
   const navigate = useNavigate();
@@ -17,10 +17,10 @@ function Login() {
       setMessage('❌ Please fill in all fields');
       return;
     }
-
+  
     setLoading(true);
     setMessage('');
-
+  
     try {
       const response = await authAPI.login({ email, password });
       
@@ -28,6 +28,36 @@ function Login() {
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // ✅ YENİ EKLENEN - Guest cart'ı backend'e transfer et
+        try {
+          const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+          
+          if (guestCart.length > 0) {
+            console.log('🔄 Syncing guest cart to backend...', guestCart);
+            localStorage.setItem("cart", "[]");
+
+            // Her bir ürünü backend'e ekle
+            for (const item of guestCart) {
+              try {
+                await cartAPI.addToCart(item.productId, item.quantity);
+              } catch (err) {
+                console.error("Error syncing cart item:", err);
+              }
+            }
+            
+            // Backend'den güncel cart'ı çek
+            
+            
+            console.log('✅ Guest cart synced successfully!');
+          }
+          const cartResponse = await cartAPI.getCart();
+            localStorage.setItem("cart", JSON.stringify(cartResponse.data.items || []));
+            window.dispatchEvent(new Event("cartUpdated"));
+        } catch (syncError) {
+          console.error('Cart sync error:', syncError);
+          // Cart sync hatası olsa bile login'e devam et
+        }
         
         setMessage('✓ Login successful! Redirecting...');
         
