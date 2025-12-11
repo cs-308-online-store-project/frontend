@@ -37,7 +37,7 @@ function AppContent() {
         <Navbar />}
 
       <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
+      <Route path="/" element={<Navigate to="/products" />} />
 
         {/* AUTH */}
         <Route path="/login" element={<Login />} />
@@ -57,8 +57,8 @@ function AppContent() {
           <Route path="products" element={<AdminProducts />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+        <Route path="*" element={<Navigate to="/products" replace />} />
+        </Routes>
     </>
   );
 }
