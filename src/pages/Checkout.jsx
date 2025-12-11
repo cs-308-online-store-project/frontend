@@ -1,10 +1,21 @@
+
 // src/pages/Checkout.jsx
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { cartAPI, orderAPI } from "../services/api";
 
+
+
 export default function Checkout() {
   const navigate = useNavigate();
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login to continue checkout");
+      navigate("/login");
+    }
+  }, [navigate]);
   
   const [cart, setCart] = useState({ items: [], total_price: 0 });
   const [loading, setLoading] = useState(true);
@@ -27,15 +38,18 @@ export default function Checkout() {
   });
   
   const [errors, setErrors] = useState({});
+// Fetch cart
+useEffect(() => {
+  fetchCart();
+}, []);
 
-  // Fetch cart
-  useEffect(() => {
-    fetchCart();
-  }, []);
-
-  const fetchCart = async () => {
-    try {
-      setLoading(true);
+const fetchCart = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem("token");
+    
+    if (token) {
+      // ✅ Login ise backend'den çek
       const response = await cartAPI.getCart();
       setCart(response.data);
       
@@ -44,14 +58,37 @@ export default function Checkout() {
         alert("Your cart is empty!");
         navigate('/cart');
       }
-    } catch (err) {
-      console.error("Error fetching cart:", err);
-      alert("Failed to load cart");
-      navigate('/cart');
-    } finally {
-      setLoading(false);
+    } else {
+      // ✅ Guest ise localStorage'dan oku
+      const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+      
+      if (guestCart.length === 0) {
+        alert("Your cart is empty!");
+        navigate('/cart');
+        return;
+      }
+      
+      const totalPrice = guestCart.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+      
+      setCart({
+        items: guestCart,
+        total_price: totalPrice
+      });
     }
-  };
+  } catch (err) {
+    console.error("Error fetching cart:", err);
+    // ✅ Hata olursa da localStorage'dan oku
+    const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const totalPrice = guestCart.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+    
+    setCart({
+      items: guestCart,
+      total_price: totalPrice
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;

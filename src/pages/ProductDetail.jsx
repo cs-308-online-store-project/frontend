@@ -72,38 +72,48 @@ export default function ProductDetail() {
     console.log('🛒 Adding to cart:', {
       productId: product.id,
       quantity: qty,
-      productIdType: typeof product.id,
-      quantityType: typeof qty,
-      product: product
     });
     
     try {
-      // Backend'e ekle
-      const response = await cartAPI.addToCart(Number(product.id), Number(qty));
-      console.log('✅ Cart response:', response.data);
+      // 1. localStorage'a ekle (guest cart)
+      const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
       
-      // ✅ Cart'ı yeniden çek ve localStorage'a kaydet
-      const cartResponse = await cartAPI.getCart();
-      const cartItems = Array.isArray(cartResponse.data.items) ? cartResponse.data.items : [];
-      localStorage.setItem("cart", JSON.stringify(cartItems));
+      const existingItem = guestCart.find(item => item.productId === product.id);
       
-      // ✅ Navbar'a haber ver
+      if (existingItem) {
+        // Varsa miktarı artır
+        existingItem.quantity += qty;
+        existingItem.totalPrice = existingItem.unitPrice * existingItem.quantity;
+      } else {
+        // Yoksa yeni item ekle
+        guestCart.push({
+          id: Date.now(), // Temporary ID for guest cart
+          productId: product.id,
+          name: product.name,
+          unitPrice: Number(product.price),
+          quantity: qty,
+          totalPrice: Number(product.price) * qty,
+        });
+      }
+      
+      localStorage.setItem("cart", JSON.stringify(guestCart));
       window.dispatchEvent(new Event("cartUpdated"));
+      
+      // 2. Eğer login ise backend'e de ekle
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          await cartAPI.addToCart(Number(product.id), Number(qty));
+        } catch (error) {
+          console.log("Backend sync failed, but local cart updated");
+        }
+      }
       
       alert("✅ Added to bag 🛍️");
       
     } catch (error) {
       console.error('❌ Error adding to cart:', error);
-      console.error('Error response:', error.response?.data);
-      
-      if (error.response?.status === 401) {
-        alert("⚠️ Please login first");
-        navigate('/login');
-      } else if (error.response?.status === 400) {
-        alert("❌ " + (error.response?.data?.message || "Invalid product or quantity"));
-      } else {
-        alert("❌ Failed to add to cart. Please try again.");
-      }
+      alert("❌ Failed to add to cart. Please try again.");
     }
   }
 

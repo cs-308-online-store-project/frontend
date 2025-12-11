@@ -10,88 +10,106 @@ export default function Cart() {
   const navigate = useNavigate();
 
   // Fetch cart from backend
-  const fetchCart = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Fetch cart from backend OR localStorage
+const fetchCart = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const token = localStorage.getItem("token");
+    
+    if (token) {
+      // ✅ Login ise backend'den çek
       const response = await cartAPI.getCart();
-      
-      // ✅ DÜZELTME 1: Valid items'ı filtrele ve cart'a set et
       const cartItems = Array.isArray(response.data.items) ? response.data.items : [];
       const validItems = cartItems.filter(
         item => item && item.id && item.productId && item.quantity > 0
       );
       
-      // Cart'ı valid items ile güncelle
       setCart({
         items: validItems,
         total_price: response.data.total_price || 0
       });
-    
+      
       localStorage.setItem("cart", JSON.stringify(validItems));
-      window.dispatchEvent(new Event("cartUpdated"));
-    
-      console.log('🛒 Cart updated:', validItems.length, 'items');
-    
-    } catch (err) {
-      console.error("Error fetching cart:", err);
-      setError(err.response?.data?.message || "Failed to load cart");
-    } finally {
-      setLoading(false);
+    } else {
+      // ✅ Guest ise localStorage'dan oku
+      const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const totalPrice = guestCart.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+      
+      setCart({
+        items: guestCart,
+        total_price: totalPrice
+      });
     }
-  };
+    
+    window.dispatchEvent(new Event("cartUpdated"));
+    console.log('🛒 Cart loaded');
+    
+  } catch (err) {
+    console.error("Error fetching cart:", err);
+    // ✅ Hata olursa da localStorage'dan oku
+    const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const totalPrice = guestCart.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+    setCart({
+      items: guestCart,
+      total_price: totalPrice
+    });
+  } finally {
+    setLoading(false);
+  }
+};
+useEffect(() => {
+  fetchCart();
+}, []);
 
-  useEffect(() => {
-    fetchCart();
-  }, []);
+// Update quantity
+const updateQty = async (itemId, newQuantity) => {
+  if (newQuantity < 1) return;
 
-  // Update quantity
-  const updateQty = async (itemId, newQuantity) => {
-    if (newQuantity < 1) return;
-
-    try {
+  const token = localStorage.getItem("token");
+  
+  try {
+    if (token) {
+      // Backend update
       await cartAPI.updateQuantity(itemId, newQuantity);
-      await fetchCart();
-    } catch (err) {
-      console.error("Error updating quantity:", err);
-      alert("Failed to update quantity");
+    } else {
+      // Guest cart update (localStorage)
+      const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const item = guestCart.find(i => i.id === itemId);
+      if (item) {
+        item.quantity = newQuantity;
+        item.totalPrice = item.unitPrice * newQuantity;
+        localStorage.setItem("cart", JSON.stringify(guestCart));
+      }
     }
-  };
+    await fetchCart();
+  } catch (err) {
+    console.error("Error updating quantity:", err);
+    alert("Failed to update quantity");
+  }
+};
 
-  // Remove item
-  const removeItem = async (itemId) => {
-    try {
+// Remove item
+const removeItem = async (itemId) => {
+  const token = localStorage.getItem("token");
+  
+  try {
+    if (token) {
+      // Backend remove
       await cartAPI.removeItem(itemId);
-      await fetchCart();
-    } catch (err) {
-      console.error("Error removing item:", err);
-      alert("Failed to remove item");
+    } else {
+      // Guest cart remove (localStorage)
+      const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
+      const filtered = guestCart.filter(i => i.id !== itemId);
+      localStorage.setItem("cart", JSON.stringify(filtered));
     }
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div style={S.page}>
-        <h1 style={S.title}>Shopping Cart</h1>
-        <p style={S.loading}>Loading your cart...</p>
-      </div>
-    );
+    await fetchCart();
+  } catch (err) {
+    console.error("Error removing item:", err);
+    alert("Failed to remove item");
   }
-
-  // Error state
-  if (error) {
-    return (
-      <div style={S.page}>
-        <h1 style={S.title}>Shopping Cart</h1>
-        <div style={S.error}>
-          <p>⚠️ {error}</p>
-          <button onClick={fetchCart} style={S.retryBtn}>Retry</button>
-        </div>
-      </div>
-    );
-  }
-
+};
   // ✅ DÜZELTME 2: Daha robust empty check
   const isCartEmpty = !cart.items || cart.items.length === 0;
 

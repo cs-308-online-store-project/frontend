@@ -18,7 +18,7 @@ function applySort(items, sortKey) {
     case "name_desc":
       return list.sort((a, b) => b.name.localeCompare(a.name));
     case "popular":
-      return list.sort((a, b) => getStock(b) - getStock(a));
+      return list;
     case "newest":
       return list.sort(
         (a, b) => Number(b.id || 0) - Number(a.id || 0)
@@ -42,37 +42,42 @@ export default function Products() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const res = await productsAPI.getAll();
-        const payload = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(payload) ? payload : payload?.products ?? [];
-        const base = applySort(list, "newest");
-        if (mounted) {
-          setProducts(base);
-          setFilteredProducts(base);
-          if (!list.length) setError("No products found");
-        }
-      } catch (err) {
-        if (mounted) {
-          console.error("Products could not be loaded from the API.", err);
-          setError("Products could not be loaded from the API.");
-          setProducts([]);
-          setFilteredProducts([]);
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+useEffect(() => {
+  let mounted = true;
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  (async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      // 🔥 Backend’e sort parametresi gönderiyoruz
+      const res = await productsAPI.getAll(`?sort=${sort}`);
+
+      const payload = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(payload) ? payload : payload?.products ?? [];
+
+      if (mounted) {
+        setProducts(list);
+        setFilteredProducts(list);
+        if (!list.length) setError("No products found");
+      }
+    } catch (err) {
+      if (mounted) {
+        console.error("Products could not be loaded from the API.", err);
+        setError("Products could not be loaded from the API.");
+        setProducts([]);
+        setFilteredProducts([]);
+      }
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  })();
+
+  return () => {
+    mounted = false;
+  };
+}, [sort]); // 🔥 sort değişince tekrar API çağrılır
+
 
   useEffect(() => {
     let mounted = true;

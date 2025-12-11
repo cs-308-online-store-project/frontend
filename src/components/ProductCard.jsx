@@ -27,6 +27,7 @@ export default function ProductCard({ product }) {
           />
           {outOfStock && <span className="badge-out">OUT OF STOCK</span>}
         </div>
+
         <h3 className="product-title">{p.name || p.title}</h3>
 
         <div className="product-meta">
