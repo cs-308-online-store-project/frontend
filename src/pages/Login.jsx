@@ -31,8 +31,13 @@ function Login() {
         
         setMessage('✓ Login successful! Redirecting...');
         
-        // 1 saniye sonra products sayfasına git
+        // 1 saniye sonra uygun sayfaya git
         setTimeout(() => {
+          if (response.data.user?.role === 'product_manager') {
+            navigate('/product-manager');
+            return;
+          }
+
           navigate('/products');
         }, 1000);
       }

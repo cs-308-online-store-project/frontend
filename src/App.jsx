@@ -19,6 +19,7 @@ import OrderHistory from "./pages/OrderHistory";
 import OrderDetail from "./pages/OrderDetail";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
+import ProductManager from "./pages/ProductManager";
 
 // ADMIN
 import AdminLayout from "./layout/AdminLayout";
@@ -34,6 +35,7 @@ function AppContent() {
       {location.pathname !== "/login" &&
         location.pathname !== "/register" &&
         !location.pathname.startsWith("/admin") &&
+        !location.pathname.startsWith("/product-manager") &&
         <Navbar />}
 
       <Routes>
@@ -50,6 +52,9 @@ function AppContent() {
         <Route path="/orders/:id" element={<OrderDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
+
+        {/* PRODUCT MANAGER */}
+        <Route path="/product-manager" element={<ProductManager />} />
 
         {/* ADMIN */}
         <Route path="/admin" element={<AdminLayout />}>
