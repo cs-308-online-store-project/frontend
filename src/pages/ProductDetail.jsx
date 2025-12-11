@@ -177,7 +177,6 @@ export default function ProductDetail() {
         </div>
 
         <div style={S.rightCol}>
-          <div style={S.brand}>{product.distributor || categoryLabel}</div>
           <div style={S.productId}>ID: #{product.id}</div>
           <h1 style={S.title}>{product.name}</h1>
           <div style={S.price}>{currency(product.price)}</div>
