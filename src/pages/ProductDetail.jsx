@@ -178,6 +178,7 @@ export default function ProductDetail() {
 
         <div style={S.rightCol}>
           <div style={S.brand}>{product.distributor || categoryLabel}</div>
+          <div style={S.productId}>ID: #{product.id}</div>
           <h1 style={S.title}>{product.name}</h1>
           <div style={S.price}>{currency(product.price)}</div>
           <div style={{ ...S.availability, ...availabilityStyle }}>
@@ -334,6 +335,14 @@ const S = {
   container: { maxWidth: 1240, margin: "0 auto", padding: 24 },
   link: { color: "#111", textDecoration: "none" },
   muted: { color: "#6b7280" },
+  productId: { 
+    fontSize: 13, 
+    color: "#999", 
+    marginBottom: 8,
+    fontWeight: 500,
+    letterSpacing: "0.05em"
+  },
+
   breadcrumb: { display: "flex", gap: 8, alignItems: "center", color: "#6b7280", marginBottom: 18 },
   crumbSep: { color: "#9ca3af" },
 
