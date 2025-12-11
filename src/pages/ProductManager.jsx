@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderService } from '../services/order.service';
+import { reviewsAPI } from '../services/api';
 
 export default function ProductManager() {
   const navigate = useNavigate();
@@ -9,6 +10,11 @@ export default function ProductManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState(null);
+  const [updatingReviewId, setUpdatingReviewId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const user = useMemo(() => {
     const raw = localStorage.getItem('user');
@@ -34,6 +40,12 @@ export default function ProductManager() {
 
     fetchDeliveries();
   }, [user, navigate]);
+  
+    useEffect(() => {
+        if (activeTab === 'comments') {
+        fetchReviews();
+        }
+    }, [activeTab]);
 
   const fetchDeliveries = async () => {
     try {
@@ -86,6 +98,25 @@ export default function ProductManager() {
     }
   };
 
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      setReviewsError(null);
+
+      const res = await reviewsAPI.getAll();
+      const payload = res?.data?.data ?? res?.data;
+      const items = Array.isArray(payload) ? payload : payload?.reviews || [];
+
+      setReviews(items);
+    } catch (err) {
+      console.error('Failed to load reviews', err);
+      setReviews([]);
+      setReviewsError('Yorum listesi yüklenemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   const handleStatusChange = async (deliveryId, newStatus) => {
     try {
       setUpdatingId(deliveryId);
@@ -103,6 +134,32 @@ export default function ProductManager() {
       setUpdatingId(null);
     }
   };
+
+  const updateReviewStatus = async (reviewId, status) => {
+    const approved = status === 'approved';
+
+    try {
+      setUpdatingReviewId(reviewId);
+      setReviewsError(null);
+      await reviewsAPI.updateStatus(reviewId, approved);
+
+      setReviews((prev) =>
+        prev.map((item) =>
+          item.id === reviewId ? { ...item, status, approved } : item
+        )
+      );
+    } catch (err) {
+      console.error('Failed to update review status', err);
+      setReviewsError('Durum güncellenemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setUpdatingReviewId(null);
+    }
+  };
+
+  const filteredReviews = useMemo(() => {
+    if (statusFilter === 'all') return reviews;
+    return reviews.filter((r) => (r.status || 'pending').toLowerCase() === statusFilter);
+  }, [reviews, statusFilter]);
 
   const renderDeliveryTab = () => {
     if (loading) {
@@ -171,6 +228,121 @@ export default function ProductManager() {
     );
   };
 
+  const renderCommentsTab = () => {
+    if (reviewsLoading) {
+      return <div style={styles.emptyState}>Yorumlar yükleniyor...</div>;
+    }
+
+    if (reviewsError) {
+      return (
+        <div style={styles.emptyState}>
+          <p>{reviewsError}</p>
+          <button style={styles.primaryButton} onClick={fetchReviews}>
+            Tekrar Dene
+          </button>
+        </div>
+      );
+    }
+
+    if (!filteredReviews.length) {
+      return <div style={styles.emptyState}>Henüz yorum bulunamadı.</div>;
+    }
+
+    const statusOptions = [
+      { label: 'Tümü', value: 'all' },
+      { label: 'Beklemede', value: 'pending' },
+      { label: 'Onaylandı', value: 'approved' },
+      { label: 'Reddedildi', value: 'rejected' },
+    ];
+
+    return (
+      <div>
+        <div style={styles.filtersRow}>
+          <div>
+            <p style={styles.eyebrow}>Toplam Yorum</p>
+            <h3 style={{ margin: 0 }}>{reviews.length}</h3>
+          </div>
+          <div style={styles.filterControls}>
+            <label htmlFor="statusFilter" style={styles.filterLabel}>
+              Durum
+            </label>
+            <select
+              id="statusFilter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={styles.select}
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={styles.tableWrapper}>
+          <div style={{ ...styles.tableHeader, alignItems: 'center' }}>
+            <span style={{ flex: 0.5 }}>ID</span>
+            <span style={{ flex: 0.8 }}>Product</span>
+            <span style={{ flex: 1 }}>Kullanıcı</span>
+            <span style={{ flex: 0.8 }}>Puan</span>
+            <span style={{ flex: 2 }}>Yorum</span>
+            <span style={{ flex: 0.8 }}>Durum</span>
+            <span style={{ width: '180px' }}></span>
+          </div>
+          {filteredReviews.map((review) => {
+            const reviewerName =
+              review.user?.name ||
+              review.user_name ||
+              review.username ||
+              review.user ||
+              review.user_id ||
+              'Anonymous';
+
+            const statusValue = (review.status || 'pending').toLowerCase();
+
+            return (
+              <div key={review.id} style={{ ...styles.tableRow, alignItems: 'flex-start' }}>
+                <span style={{ flex: 0.5 }}>#{review.id}</span>
+                <span style={{ flex: 0.8 }}>#{review.product_id || review.productId}</span>
+                <span style={{ flex: 1 }}>{reviewerName}</span>
+                <span style={{ flex: 0.8 }}>
+                  <span style={styles.ratingBadge}>{review.rating ?? '—'}/5</span>
+                </span>
+                <span style={{ flex: 2 }}>
+                  <p style={styles.commentPreview}>{review.comment}</p>
+                  <small style={styles.commentDate}>Eklenme: {review.created_at}</small>
+                </span>
+                <span style={{ flex: 0.8 }}>
+                  <span style={styles.commentStatusBadge(statusValue)}>
+                    {statusValue}
+                  </span>
+                </span>
+                <span style={{ width: '180px', display: 'flex', gap: '0.5rem' }}>
+                  {['pending', 'approved', 'rejected'].map((option) => (
+                    <button
+                      key={option}
+                      style={
+                        statusValue === option
+                          ? styles.secondaryButton
+                          : styles.lightButton
+                      }
+                      disabled={updatingReviewId === review.id}
+                      onClick={() => updateReviewStatus(review.id, option)}
+                    >
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </button>
+                  ))}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
@@ -202,9 +374,7 @@ export default function ProductManager() {
         {activeTab === 'delivery' ? (
           renderDeliveryTab()
         ) : (
-          <div style={styles.emptyState}>
-            Comment moderation is coming soon.
-          </div>
+          renderCommentsTab()
         )}
       </div>
     </div>
@@ -302,6 +472,25 @@ const styles = {
     alignItems: 'center',
     fontSize: '0.95rem',
   },
+  filtersRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: '1rem',
+  },
+  filterControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  filterLabel: { fontSize: '0.9rem', color: '#475569', fontWeight: 600 },
+  select: {
+    padding: '0.5rem 0.75rem',
+    borderRadius: '8px',
+    border: '1px solid #cbd5e1',
+    background: 'white',
+    fontWeight: 600,
+  },
   statusBadge: (status) => {
     const colors = {
       processing: '#f59e0b',
@@ -311,6 +500,26 @@ const styles = {
 
     const colorKey = (status || '').replace(' ', '_').toLowerCase();
     const background = colors[colorKey] || '#cbd5e1';
+
+    return {
+      display: 'inline-block',
+      padding: '0.35rem 0.7rem',
+      borderRadius: '999px',
+      background,
+      color: 'white',
+      fontWeight: 700,
+      fontSize: '0.85rem',
+      textTransform: 'capitalize',
+    };
+  },
+  commentStatusBadge: (status) => {
+    const colors = {
+      pending: '#f59e0b',
+      approved: '#10b981',
+      rejected: '#ef4444',
+    };
+
+    const background = colors[status] || '#cbd5e1';
 
     return {
       display: 'inline-block',
@@ -341,9 +550,36 @@ const styles = {
     cursor: 'pointer',
     fontWeight: 700,
   },
+  lightButton: {
+    border: '1px solid #e2e8f0',
+    background: '#f8fafc',
+    color: '#0f172a',
+    padding: '0.5rem 0.6rem',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 700,
+  },
   emptyState: {
     padding: '2rem',
     textAlign: 'center',
     color: '#475569',
   },
+  ratingBadge: {
+    display: 'inline-block',
+    padding: '0.35rem 0.55rem',
+    borderRadius: '8px',
+    background: '#111827',
+    color: 'white',
+    fontWeight: 700,
+    fontSize: '0.9rem',
+  },
+  commentPreview: {
+    margin: 0,
+    color: '#0f172a',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+  },
+  commentDate: { color: '#94a3b8' },
 };

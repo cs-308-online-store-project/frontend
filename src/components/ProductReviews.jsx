@@ -8,14 +8,32 @@ export default function ProductReviews({ product }) {
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const productId = product?.id ?? product?.product_id ?? product?.productId;
 
+  const currentUser = useMemo(() => {
+    const raw = localStorage.getItem("user");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error("Invalid user data in storage", err);
+      return null;
+    }
+  }, []);
+
+  const visibleReviews = useMemo(
+    () => reviews.filter((r) => r.approved !== false),
+    [reviews]
+  );
+
   const avgRating = useMemo(() => {
-    if (!reviews.length) return 0;
-    const sum = reviews.reduce((acc, r) => acc + Number(r.rating || 0), 0);
-    return sum / reviews.length;
-  }, [reviews]);
+    if (!visibleReviews.length) return 0;
+    const sum = visibleReviews.reduce((acc, r) => acc + Number(r.rating || 0), 0);
+    return sum / visibleReviews.length;
+  }, [visibleReviews]);
 
   useEffect(() => {
     let active = true;
@@ -50,7 +68,7 @@ export default function ProductReviews({ product }) {
             })
           : items;
 
-        setReviews(filtered);
+        setReviews(filtered.filter((r) => r.approved !== false));
       } catch (err) {
         if (!active) return;
         console.error("Reviews could not be loaded", err);
@@ -76,22 +94,63 @@ export default function ProductReviews({ product }) {
       : parsed.toLocaleDateString("tr-TR", { year: "numeric", month: "short", day: "numeric" });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!rating || !comment.trim()) return;
+    if (!rating || !comment.trim() || !productId) return;
 
-    const newReview = {
-      id: Date.now(),
-      user: "You", // UI-only, gerçek kullanıcı yok
+    const timestamp = new Date().toISOString();
+    const payload = {
+      product_id: productId,
       rating,
       comment: comment.trim(),
-      created_at: "just now",
+      approved: false,
+      created_at: timestamp,
     };
 
-    // En üste ekleyelim
-    setReviews((prev) => [newReview, ...prev]);
-    setComment("");
-    setRating(5);
+    if (currentUser?.id || currentUser?.user_id) {
+      //payload.userId = currentUser.id ?? currentUser.user_id;
+      payload.user_id = currentUser.id ?? currentUser.user_id;
+    }
+
+    try {
+      setSubmitting(true);
+      setSubmitError("");
+      const res = await reviewsAPI.create(payload);
+      const saved = res?.data?.data ?? res?.data ?? {};
+
+      const fallbackName =
+        currentUser?.name ||
+        currentUser?.username ||
+        currentUser?.email ||
+        currentUser?.id;
+
+      const reviewToAdd = {
+        id: saved.id ?? Date.now(),
+        rating: saved.rating ?? payload.rating,
+        comment: saved.comment ?? payload.comment,
+        status: saved.status ?? payload.status,
+        approved: saved.approved ?? payload.approved,
+        user_id: saved.user_id ?? payload.user_id,
+        userId: saved.userId ?? payload.userId,
+        created_at: saved.created_at ?? payload.created_at,
+        user:
+          saved.user ||
+          saved.user_name ||
+          saved.username ||
+          saved.user_id ||
+          fallbackName ||
+          "Anonymous",
+      };
+
+      setReviews((prev) => [reviewToAdd, ...prev]);
+      setComment("");
+      setRating(5);
+    } catch (err) {
+      console.error("Comment could not be saved", err);
+      setSubmitError("Yorum kaydedilemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -116,7 +175,7 @@ export default function ProductReviews({ product }) {
             ))}
           </div>
           <div style={R.countText}>
-            {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+            {visibleReviews.length} {visibleReviews.length === 1 ? "review" : "reviews"}
           </div>
         </div>
       </div>
@@ -155,22 +214,30 @@ export default function ProductReviews({ product }) {
         </div>
 
         <div style={R.formFooter}>
-          <p style={R.helperText}>Yeni yorumlar henüz sunucuya kaydedilmiyor.</p>
-          <button type="submit" style={R.submitBtn} disabled={!comment.trim()}>
-            Submit review
+          <p style={R.helperText}>
+            Yorumunuz kaydedilir ve onay sürecine gönderilir.
+          </p>
+          <button
+            type="submit"
+            style={R.submitBtn}
+            disabled={!comment.trim() || !productId || submitting}
+          >
+            {submitting ? "Saving..." : "Submit review"}
           </button>
         </div>
+
+        {submitError && <p style={R.errorText}>{submitError}</p>}
       </form>
 
       {/* Yorum listesi */}
       <div style={R.list}>
         {loading && <p style={R.helperText}>Yorumlar yükleniyor...</p>}
         {error && <p style={R.errorText}>{error}</p>}
-        {!loading && !error && !reviews.length && (
+        {!loading && !error && !visibleReviews.length && (
           <p style={R.helperText}>Bu ürün için henüz yorum yok.</p>
         )}
 
-        {reviews.map((r) => {
+        {visibleReviews.map((r) => {
           const reviewerName =
             r.user?.name ||
             r.user_name ||

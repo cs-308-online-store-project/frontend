@@ -67,6 +67,9 @@ export const orderAPI = {
 // Reviews API
 export const reviewsAPI = {
   getByProduct: (productId) => api.get('/reviews', { params: { productId } }),
+  create: (payload) => api.post('/reviews', payload),
+  getAll: () => api.get('/reviews'),
+  updateStatus: (reviewId, approved) => api.put(`/reviews/${reviewId}/status`, { approved }),
 };
 
 export default api;
