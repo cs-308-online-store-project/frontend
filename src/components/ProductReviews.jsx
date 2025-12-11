@@ -1,34 +1,80 @@
 // src/components/ProductReviews.jsx
-import { useMemo, useState } from "react";
-
-// Her ürün için aynı mock yorumlar gösterilecek (sadece güzel dursun diye)
-const MOCK_REVIEWS = [
-  {
-    id: 1,
-    user: "Alex M.",
-    rating: 5,
-    comment: "Amazing quality, fits perfectly. Will definitely buy again.",
-    created_at: "2 days ago",
-  },
-  {
-    id: 2,
-    user: "Jordan P.",
-    rating: 4,
-    comment: "Looks exactly like the photos. A bit oversized but I like it.",
-    created_at: "1 week ago",
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { reviewsAPI } from "../services/api";
 
 export default function ProductReviews({ product }) {
-  const [reviews, setReviews] = useState(MOCK_REVIEWS);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
 
+  const productId = product?.id ?? product?.product_id ?? product?.productId;
+
   const avgRating = useMemo(() => {
     if (!reviews.length) return 0;
-    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const sum = reviews.reduce((acc, r) => acc + Number(r.rating || 0), 0);
     return sum / reviews.length;
   }, [reviews]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadReviews = async () => {
+      if (!productId) {
+        setReviews([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+        const res = await reviewsAPI.getByProduct(productId);
+        if (!active) return;
+
+        const payload = res?.data?.data ?? res?.data;
+        const items = Array.isArray(payload) ? payload : payload?.reviews || [];
+
+        const toKey = (value) =>
+          value === undefined || value === null ? null : String(value).trim();
+        const currentKey = toKey(productId);
+
+        const filtered = currentKey
+          ? items.filter((item) => {
+              const candidate =
+                item.product_id ||
+                item.productId ||
+                item.product?.id ||
+                item.product;
+              return toKey(candidate) === currentKey;
+            })
+          : items;
+
+        setReviews(filtered);
+      } catch (err) {
+        if (!active) return;
+        console.error("Reviews could not be loaded", err);
+        setError("Yorumlar yüklenemedi. Lütfen tekrar deneyin.");
+        setReviews([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    loadReviews();
+
+    return () => {
+      active = false;
+    };
+  }, [productId]);
+
+  const formatDate = (value) => {
+    if (!value) return "—";
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime())
+      ? value
+      : parsed.toLocaleDateString("tr-TR", { year: "numeric", month: "short", day: "numeric" });
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -109,9 +155,7 @@ export default function ProductReviews({ product }) {
         </div>
 
         <div style={R.formFooter}>
-          <p style={R.helperText}>
-            This is a demo UI only — comments are not stored on the server.
-          </p>
+          <p style={R.helperText}>Yeni yorumlar henüz sunucuya kaydedilmiyor.</p>
           <button type="submit" style={R.submitBtn} disabled={!comment.trim()}>
             Submit review
           </button>
@@ -120,24 +164,41 @@ export default function ProductReviews({ product }) {
 
       {/* Yorum listesi */}
       <div style={R.list}>
-        {reviews.map((r) => (
-          <div key={r.id} style={R.reviewCard}>
-            <div style={R.reviewHead}>
-              <div>
-                <div style={R.userName}>{r.user}</div>
-                <div style={R.dateText}>{r.created_at}</div>
+        {loading && <p style={R.helperText}>Yorumlar yükleniyor...</p>}
+        {error && <p style={R.errorText}>{error}</p>}
+        {!loading && !error && !reviews.length && (
+          <p style={R.helperText}>Bu ürün için henüz yorum yok.</p>
+        )}
+
+        {reviews.map((r) => {
+          const reviewerName =
+            r.user?.name ||
+            r.user_name ||
+            r.username ||
+            r.user ||
+            r.user_id ||
+            "Anonymous";
+          const ratingValue = Number(r.rating) || 0;
+
+          return (
+            <div key={r.id} style={R.reviewCard}>
+              <div style={R.reviewHead}>
+                <div>
+                  <div style={R.userName}>{reviewerName}</div>
+                  <div style={R.dateText}>{formatDate(r.created_at || r.createdAt)}</div>
+                </div>
+                <div style={R.reviewStars}>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span key={i} style={i < ratingValue ? R.starFilledSmall : R.starEmptySmall}>
+                      ★
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div style={R.reviewStars}>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} style={i < r.rating ? R.starFilledSmall : R.starEmptySmall}>
-                    ★
-                  </span>
-                ))}
-              </div>
+              <p style={R.commentText}>{r.comment}</p>
             </div>
-            <p style={R.commentText}>{r.comment}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -217,6 +278,7 @@ const R = {
     marginTop: 6,
   },
   helperText: { fontSize: 11, color: "#9ca3af", margin: 0 },
+  errorText: { fontSize: 12, color: "#dc2626", margin: 0 },
   submitBtn: {
     background: "#111827",
     color: "#fff",

@@ -12,7 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Ignore environment files
 .env
 
 # Ignore database files
@@ -31,3 +30,6 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files
+.env

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -48,28 +48,25 @@ export const categoriesAPI = {
 // Cart API
 export const cartAPI = {
   getCart: () => api.get('/cart'),
-  addToCart: (productId, quantity) => 
-    api.post('/cart/add', { productId, quantity }),
-  updateQuantity: (itemId, quantity) => 
-    api.put(`/cart/items/${itemId}`, { quantity }),
-  removeItem: (itemId) => 
-    api.delete(`/cart/items/${itemId}`),
+  addToCart: (productId, quantity) => api.post('/cart/add', { productId, quantity }),
+  updateQuantity: (itemId, quantity) => api.put(`/cart/items/${itemId}`, { quantity }),
+  removeItem: (itemId) => api.delete(`/cart/items/${itemId}`),
 };
 
 // Order API
 export const orderAPI = {
-  createOrder: (userId, address) => 
-    api.post('/orders', { userId, address }),
-  getOrders: () => 
-    api.get('/orders'),
-  getOrderById: (orderId) => 
-    api.get(`/orders/${orderId}`),
-  
+  createOrder: (userId, address) => api.post('/orders', { userId, address }),
+  getOrders: () => api.get('/orders'),
+  getOrderById: (orderId) => api.get(`/orders/${orderId}`),
+
   // Invoice endpoints
-  generateInvoice: (orderId) =>
-    api.post(`/invoices/${orderId}/generate`),
-  downloadInvoice: (orderId) =>
-    api.get(`/invoices/${orderId}/download`, { responseType: 'blob' }),
+  generateInvoice: (orderId) => api.post(`/invoices/${orderId}/generate`),
+  downloadInvoice: (orderId) => api.get(`/invoices/${orderId}/download`, { responseType: 'blob' }),
+};
+
+// Reviews API
+export const reviewsAPI = {
+  getByProduct: (productId) => api.get('/reviews', { params: { productId } }),
 };
 
 export default api;
