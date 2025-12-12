@@ -136,18 +136,25 @@ export default function ProductManager() {
   };
 
   const updateReviewStatus = async (reviewId, status) => {
-    const approved = status === 'approved';
-
     try {
       setUpdatingReviewId(reviewId);
       setReviewsError(null);
+      
+      const approved = status === 'approved';
+      
       await reviewsAPI.updateStatus(reviewId, approved);
-
+  
+      // ✅ State'i güncelle
       setReviews((prev) =>
         prev.map((item) =>
-          item.id === reviewId ? { ...item, status, approved } : item
+          item.id === reviewId 
+            ? { ...item, approved: approved, status: status } 
+            : item
         )
       );
+      
+      alert(`✅ Review ${status}!`);
+      
     } catch (err) {
       console.error('Failed to update review status', err);
       setReviewsError('Durum güncellenemedi. Lütfen tekrar deneyin.');
@@ -155,11 +162,7 @@ export default function ProductManager() {
       setUpdatingReviewId(null);
     }
   };
-
-  const filteredReviews = useMemo(() => {
-    if (statusFilter === 'all') return reviews;
-    return reviews.filter((r) => (r.status || 'pending').toLowerCase() === statusFilter);
-  }, [reviews, statusFilter]);
+ 
 
   const renderDeliveryTab = () => {
     if (loading) {
@@ -243,6 +246,19 @@ export default function ProductManager() {
         </div>
       );
     }
+
+        // ✅ YENİ EKLENEN - Sadece comment içeren review'ları filtrele
+    const commentsOnly = reviews.filter(r => r.comment && r.comment.trim());
+
+    const filteredReviews = (() => {
+      if (statusFilter === 'all') return commentsOnly;
+        return commentsOnly.filter((r) => {
+          if (statusFilter === 'approved') return r.approved === true;
+          if (statusFilter === 'rejected') return r.approved === false;
+          if (statusFilter === 'pending') return r.approved !== true && r.approved !== false;
+          return true;
+        });
+    })();
 
     if (!filteredReviews.length) {
       return <div style={styles.emptyState}>Henüz yorum bulunamadı.</div>;

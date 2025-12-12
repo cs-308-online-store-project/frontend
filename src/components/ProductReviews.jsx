@@ -1,8 +1,10 @@
 // src/components/ProductReviews.jsx
 import { useEffect, useMemo, useState } from "react";
-import { reviewsAPI } from "../services/api";
+import { useNavigate } from "react-router-dom";
+import { reviewsAPI, orderAPI } from "../services/api";
 
 export default function ProductReviews({ product }) {
+  const navigate = useNavigate(); 
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -25,15 +27,18 @@ export default function ProductReviews({ product }) {
   }, []);
 
   const visibleReviews = useMemo(
-    () => reviews.filter((r) => r.approved !== false),
+    () => reviews.filter((r) => r.approved === true), // ✅ Sadece approved=true olanlar
     [reviews]
   );
 
   const avgRating = useMemo(() => {
-    if (!visibleReviews.length) return 0;
-    const sum = visibleReviews.reduce((acc, r) => acc + Number(r.rating || 0), 0);
-    return sum / visibleReviews.length;
-  }, [visibleReviews]);
+    // ✅ TÜM review'ların rating'ini say (approved/pending fark etmez)
+    const ratingsOnly = reviews.filter(r => r.rating && r.rating > 0);
+    if (!ratingsOnly.length) return 0;
+    const sum = ratingsOnly.reduce((acc, r) => acc + Number(r.rating || 0), 0);
+    return sum / ratingsOnly.length;
+  }, [reviews]);
+  
 
   useEffect(() => {
     let active = true;
@@ -68,7 +73,7 @@ export default function ProductReviews({ product }) {
             })
           : items;
 
-        setReviews(filtered.filter((r) => r.approved !== false));
+          setReviews(filtered); 
       } catch (err) {
         if (!active) return;
         console.error("Reviews could not be loaded", err);
@@ -96,58 +101,71 @@ export default function ProductReviews({ product }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!rating || !comment.trim() || !productId) return;
-
-    const timestamp = new Date().toISOString();
-    const payload = {
-      product_id: productId,
-      rating,
-      comment: comment.trim(),
-      approved: false,
-      created_at: timestamp,
-    };
-
-    if (currentUser?.id || currentUser?.user_id) {
-      //payload.userId = currentUser.id ?? currentUser.user_id;
-      payload.user_id = currentUser.id ?? currentUser.user_id;
+    
+    if (!rating) {
+      alert('Please select a rating');
+      return;
     }
-
+    
+    setSubmitting(true);
+    
     try {
-      setSubmitting(true);
-      setSubmitError("");
-      const res = await reviewsAPI.create(payload);
-      const saved = res?.data?.data ?? res?.data ?? {};
-
-      const fallbackName =
-        currentUser?.name ||
-        currentUser?.username ||
-        currentUser?.email ||
-        currentUser?.id;
-
-      const reviewToAdd = {
-        id: saved.id ?? Date.now(),
-        rating: saved.rating ?? payload.rating,
-        comment: saved.comment ?? payload.comment,
-        status: saved.status ?? payload.status,
-        approved: saved.approved ?? payload.approved,
-        user_id: saved.user_id ?? payload.user_id,
-        userId: saved.userId ?? payload.userId,
-        created_at: saved.created_at ?? payload.created_at,
-        user:
-          saved.user ||
-          saved.user_name ||
-          saved.username ||
-          saved.user_id ||
-          fallbackName ||
-          "Anonymous",
-      };
-
-      setReviews((prev) => [reviewToAdd, ...prev]);
-      setComment("");
-      setRating(5);
-    } catch (err) {
-      console.error("Comment could not be saved", err);
-      setSubmitError("Yorum kaydedilemedi. Lütfen tekrar deneyin.");
+      // Kullanıcının delivered order'ını bul
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      if (!user.id) {
+        alert('❌ Please login first');
+        navigate('/login');
+        return;
+      }
+      
+      const ordersResponse = await orderAPI.getOrders();
+      const orders = ordersResponse.data?.data || [];
+      
+      // Bu ürünü içeren delivered order bul
+      let deliveredOrder = null;
+      for (const order of orders) {
+        if (order.status === 'delivered') {
+          // Order items'ı kontrol et
+          const orderDetails = await orderAPI.getOrderById(order.id);
+          const hasProduct = orderDetails.data?.data?.items?.some(
+            item => item.productId === product.id || item.product_id === product.id
+          );
+          
+          if (hasProduct) {
+            deliveredOrder = order;
+            break;
+          }
+        }
+      }
+      
+      if (!deliveredOrder) {
+        alert('❌ You can only review products from delivered orders');
+        return;
+      }
+      
+      // Review oluştur
+      const response = await reviewsAPI.create({
+        product_id: product.id,
+        user_id: user.id,
+        order_id: deliveredOrder.id,
+        rating: rating,
+        comment: comment.trim() || null
+      });
+      
+      if (response.data.success) {
+        alert(response.data.message || '✅ Review submitted!');
+        setRating(0);
+        setComment('');
+        // Reviews'i yenile
+        if (typeof fetchReviews === 'function') {
+          fetchReviews();
+        }
+      }
+      
+    } catch (error) {
+      console.error('Review error:', error);
+      alert(error.response?.data?.error || '❌ Failed to submit review');
     } finally {
       setSubmitting(false);
     }
@@ -237,7 +255,9 @@ export default function ProductReviews({ product }) {
           <p style={R.helperText}>Bu ürün için henüz yorum yok.</p>
         )}
 
-        {visibleReviews.map((r) => {
+      {visibleReviews
+        .filter(r => r.comment && r.comment.trim()) // ✅ Sadece comment içeren review'ları göster
+        .map((r) => {
           const reviewerName =
             r.user?.name ||
             r.user_name ||
