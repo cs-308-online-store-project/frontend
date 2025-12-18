@@ -61,7 +61,7 @@ export const orderAPI = {
   createOrder: (userId, address) => api.post('/orders', { userId, address }),
   getOrders: () => api.get('/orders'),
   getOrderById: (orderId) => api.get(`/orders/${orderId}`),
-
+  cancelOrder: (orderId) => api.post(`/orders/${orderId}/cancel`), // ✅ YENİ
   // Invoice endpoints
   generateInvoice: (orderId) => api.post(`/invoices/${orderId}/generate`),
   downloadInvoice: (orderId) => api.get(`/invoices/${orderId}/download`, { responseType: 'blob' }),
@@ -81,4 +81,6 @@ export const wishlistAPI = {
   addToWishlist: (productId) => api.post('/wishlist/add', { product_id: productId }),
   removeFromWishlist: (productId) => api.delete(`/wishlist/remove/${productId}`),
 };
+
+
 export default api;

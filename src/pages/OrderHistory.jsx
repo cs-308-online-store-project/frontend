@@ -1,7 +1,7 @@
 // src/pages/OrderHistory.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { orderService } from '../services/order.service';
+import { orderAPI } from '../services/api';
 import '../styles/OrderHistory.css';
 
 export default function OrderHistory() {
@@ -18,8 +18,8 @@ export default function OrderHistory() {
     try {
       setLoading(true);
 
-      const data = await orderService.getAllOrders(); 
-      // backend returns: { id, createdAt, totalPrice, items[], status }
+      const response = await orderAPI.getOrders();
+      const data = response.data?.data || [];      // backend returns: { id, createdAt, totalPrice, items[], status }
 
       const sorted = [...data].sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -70,7 +70,29 @@ export default function OrderHistory() {
   const handleOrderClick = (orderId) => {
     navigate(`/orders/${orderId}`);
   };
-
+  const handleCancelOrder = async (orderId, e) => {
+    e.stopPropagation(); // Prevent navigation to order detail
+  
+    const confirmed = window.confirm(
+      'Are you sure you want to cancel this order?\n\nThe items will be returned to stock.'
+    );
+  
+    if (!confirmed) return;
+  
+    try {
+      const response = await orderAPI.cancelOrder(orderId);
+      
+      if (response.data.success) {
+        alert('✅ Order cancelled successfully!');
+        // Refresh orders
+        fetchOrders();
+      }
+    } catch (error) {
+      console.error('Cancel order error:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to cancel order';
+      alert(`❌ ${errorMsg}`);
+    }
+  };
   if (loading) {
     return (
       <div className="order-history-container">
@@ -154,10 +176,29 @@ export default function OrderHistory() {
             </div>
 
             <div className="order-card-footer">
-              <button className="view-details-button">
-                View Details →
-              </button>
-            </div>
+          {order.status === 'processing' && (
+            <button 
+              className="cancel-order-button"
+              onClick={(e) => handleCancelOrder(order.id, e)}
+              style={{
+                background: 'white',
+                border: '1px solid #ef4444',
+                color: '#ef4444',
+                padding: '0.5rem 1rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                marginRight: '0.5rem',
+              }}
+            >
+              Cancel Order
+            </button>
+          )}
+  
+  <button className="view-details-button">
+    View Details →
+  </button>
+</div>
           </div>
         ))}
       </div>
