@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import HeartIcon from "./icons/HeartIcon";
-import { authAPI } from "../services/api";
+import { authAPI, wishlistAPI } from "../services/api";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ export default function Navbar() {
 
   // Cart state
   const [cart, setCart] = useState([]);
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   // Login state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -36,7 +37,9 @@ export default function Navbar() {
   }, []);
 
   // READ LOGIN STATE from localStorage
-  useEffect(() => {
+ // READ LOGIN STATE from localStorage
+useEffect(() => {
+  const updateLoginState = () => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
 
@@ -48,9 +51,47 @@ export default function Navbar() {
       } catch {
         setUser(null);
       }
+    } else {
+      setUser(null);
     }
-  }, []);
+  };
 
+  updateLoginState();
+
+  // Login değiştiğinde güncelle
+  window.addEventListener("loginStateChanged", updateLoginState);
+
+  return () => {
+    window.removeEventListener("loginStateChanged", updateLoginState);
+  };
+}, []);
+
+// READ WISHLIST COUNT
+useEffect(() => {
+  const fetchWishlistCount = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const response = await wishlistAPI.getCount();
+        setWishlistCount(response.data.count || 0);
+      } else {
+        setWishlistCount(0);
+      }
+    } catch (error) {
+      console.error("Wishlist count error:", error);
+      setWishlistCount(0);
+    }
+  };
+
+  fetchWishlistCount();
+
+  // Wishlist değiştiğinde güncelle
+  window.addEventListener("wishlistUpdated", fetchWishlistCount);
+
+  return () => {
+    window.removeEventListener("wishlistUpdated", fetchWishlistCount);
+  };
+}, [isLoggedIn]);
   // HANDLE LOGOUT
   const handleLogout = async () => {
     try {
@@ -65,6 +106,8 @@ export default function Navbar() {
     setIsLoggedIn(false);
     setUser(null);
     setOpen(false);
+
+    window.dispatchEvent(new Event('loginStateChanged'));
 
     navigate("/login");
   };
@@ -110,9 +153,13 @@ export default function Navbar() {
       {/* RIGHT SECTION */}
       <div style={S.right}>
         {/* FAVORITES */}
-        <Link to="/favorites" style={S.iconWrapper}>
-          <HeartIcon active={false} size={26} />
-        </Link>
+        {/* WISHLIST */}
+        {isLoggedIn && (
+          <Link to="/wishlist" style={S.cartWrapper}>
+            <HeartIcon active={false} size={26} />
+            {wishlistCount > 0 && <span style={S.badge}>{wishlistCount}</span>}
+          </Link>
+        )}
 
         {/* USER DROPDOWN */}
         {isLoggedIn ? (

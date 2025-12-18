@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { cartAPI, productsAPI } from "../services/api";
-import ProductReviews from "../components/ProductReviews";
+import { cartAPI, productsAPI, wishlistAPI } from "../services/api";import ProductReviews from "../components/ProductReviews";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -14,6 +13,8 @@ export default function ProductDetail() {
   const [error, setError] = useState("");
   const [qty, setQty] = useState(1);
   const [hero, setHero] = useState(initialProduct?.image_url || "");
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   const stock = Math.max(0, Number(product?.stock ?? 0));
   const out = stock === 0;
@@ -65,6 +66,61 @@ export default function ProductDetail() {
     );
     setQty(1);
   }
+  // Check if product is in wishlist
+useEffect(() => {
+  const checkWishlist = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token || !product?.id) {
+        setIsInWishlist(false);
+        return;
+      }
+
+      const response = await wishlistAPI.getWishlist();
+      const wishlistItems = response.data.data || [];
+      const exists = wishlistItems.some((item) => item.id === product.id);
+      setIsInWishlist(exists);
+    } catch (error) {
+      console.error("Check wishlist error:", error);
+    }
+  };
+
+  checkWishlist();
+
+  window.addEventListener("wishlistUpdated", checkWishlist);
+  return () => {
+    window.removeEventListener("wishlistUpdated", checkWishlist);
+  };
+}, [product?.id]);
+
+const toggleWishlist = async () => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login to add to wishlist");
+    return;
+  }
+
+  setWishlistLoading(true);
+
+  try {
+    if (isInWishlist) {
+      await wishlistAPI.removeFromWishlist(product.id);
+      setIsInWishlist(false);
+      alert("❤️ Removed from wishlist");
+    } else {
+      await wishlistAPI.addToWishlist(product.id);
+      setIsInWishlist(true);
+      alert("💝 Added to wishlist!");
+    }
+
+    window.dispatchEvent(new Event("wishlistUpdated"));
+  } catch (error) {
+    console.error("Wishlist error:", error);
+    alert(error.response?.data?.error || "Failed to update wishlist");
+  } finally {
+    setWishlistLoading(false);
+  }
+};
 
   async function addToCart() {
     if (out) return;
@@ -244,6 +300,21 @@ export default function ProductDetail() {
               style={{ ...S.primaryBtn, ...(out ? S.btnDisabled : {}) }}
             >
               {out ? "Out of stock" : "Add To Bag"}
+            </button>
+            
+            <button
+              onClick={toggleWishlist}
+              disabled={wishlistLoading}
+              style={{
+                ...S.ghostBtn,
+                ...(wishlistLoading ? S.btnDisabled : {}),
+              }}
+            >
+              {wishlistLoading
+                ? "..."
+                : isInWishlist
+                ? "♥ In Wishlist"
+                : "♡ Add to Wishlist"}
             </button>
           </div>
 

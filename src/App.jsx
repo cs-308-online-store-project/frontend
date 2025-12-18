@@ -11,15 +11,17 @@ import Navbar from "./components/Navbar";
 import { ToastProvider } from "./context/ToastContext";  
 
 // CUSTOMER PAGES
+
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Products from "./pages/Products";
-import ProductDetail from "./pages/ProductDetail";
 import OrderHistory from "./pages/OrderHistory";
 import OrderDetail from "./pages/OrderDetail";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import ProductManager from "./pages/ProductManager";
+import ProductDetail from "./pages/ProductDetail";
+import Wishlist from "./pages/Wishlist";
 
 // ADMIN
 import AdminLayout from "./layout/AdminLayout";
@@ -52,7 +54,8 @@ function AppContent() {
         <Route path="/orders/:id" element={<OrderDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
-
+        <Route path="/checkout" element={<Checkout />} />
+        <Route path="/wishlist" element={<Wishlist />} />
         {/* PRODUCT MANAGER */}
         <Route path="/product-manager" element={<ProductManager />} />
 

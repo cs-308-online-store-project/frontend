@@ -74,5 +74,11 @@ export const reviewsAPI = {
   getAll: () => api.get('/reviews'),
   updateStatus: (reviewId, approved) => api.put(`/reviews/${reviewId}/status`, { approved }),
 };
-
+// Wishlist API
+export const wishlistAPI = {
+  getWishlist: () => api.get('/wishlist'),
+  getCount: () => api.get('/wishlist/count'),
+  addToWishlist: (productId) => api.post('/wishlist/add', { product_id: productId }),
+  removeFromWishlist: (productId) => api.delete(`/wishlist/remove/${productId}`),
+};
 export default api;
