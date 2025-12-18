@@ -81,6 +81,10 @@ export const wishlistAPI = {
   addToWishlist: (productId) => api.post('/wishlist/add', { product_id: productId }),
   removeFromWishlist: (productId) => api.delete(`/wishlist/remove/${productId}`),
 };
-
+// User API
+export const userAPI = {
+  getProfile: () => api.get('/users/profile'),
+  updateProfile: (data) => api.put('/users/profile', data),
+};
 
 export default api;

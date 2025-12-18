@@ -172,22 +172,32 @@ useEffect(() => {
             </button>
 
             {open && (
-              <div style={S.dropdown}>
-                <button
-                  style={S.dropdownItem}
-                  onClick={() => {
-                    navigate("/orders");
-                    setOpen(false);
-                  }}
-                >
-                  My Orders
-                </button>
+          <div style={S.dropdown}>
+            <button
+              style={S.dropdownItem}
+              onClick={() => {
+                navigate("/profile");
+                setOpen(false);
+              }}
+            >
+              My Profile
+            </button>
+            
+            <button
+              style={S.dropdownItem}
+              onClick={() => {
+                navigate("/orders");
+                setOpen(false);
+              }}
+            >
+              My Orders
+            </button>
 
-                <button style={S.dropdownItemDanger} onClick={handleLogout}>
-                  Logout
-                </button>
-              </div>
-            )}
+            <button style={S.dropdownItemDanger} onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+        )}
           </div>
         ) : (
           <Link to="/login" style={S.linkSmall}>

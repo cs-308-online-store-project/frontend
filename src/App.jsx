@@ -22,6 +22,7 @@ import Checkout from "./pages/Checkout";
 import ProductManager from "./pages/ProductManager";
 import ProductDetail from "./pages/ProductDetail";
 import Wishlist from "./pages/Wishlist";
+import Profile from "./pages/Profile";
 
 // ADMIN
 import AdminLayout from "./layout/AdminLayout";
@@ -56,6 +57,8 @@ function AppContent() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/wishlist" element={<Wishlist />} />
+        <Route path="/profile" element={<Profile />} />
+
         {/* PRODUCT MANAGER */}
         <Route path="/product-manager" element={<ProductManager />} />
 
