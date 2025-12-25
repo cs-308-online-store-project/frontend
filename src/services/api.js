@@ -34,9 +34,7 @@ export const authAPI = {
 
 // Products API
 export const productsAPI = {
-  // ⬇⬇⬇ **DÜZENLENEN TEK SATIR** ⬇⬇⬇
   getAll: (query = "") => api.get(`/products${query}`),
-
   getById: (id) => api.get(`/products/${id}`),
   create: (payload) => api.post('/products', payload),
   update: (id, payload) => api.put(`/products/${id}`, payload),
@@ -46,6 +44,8 @@ export const productsAPI = {
 // Categories API
 export const categoriesAPI = {
   getAll: () => api.get('/categories'),
+  create: (payload) => api.post('/categories', payload),
+  remove: (id) => api.delete(`/categories/${id}`),
 };
 
 // Cart API

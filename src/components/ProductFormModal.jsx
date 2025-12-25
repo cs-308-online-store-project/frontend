@@ -27,6 +27,16 @@ export default function ProductFormModal({
     product?.image_url || ""
   );
   const [error, setError] = useState("");
+  const normalizedCategories = categories.map((cat) => {
+    if (typeof cat === "string" || typeof cat === "number") {
+      return { value: cat, label: String(cat) };
+    }
+
+    return {
+      value: cat.id ?? cat.value ?? cat.name,
+      label: cat.name ?? cat.label ?? String(cat.id ?? ""),
+    };
+  });
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -128,9 +138,9 @@ export default function ProductFormModal({
             style={S.input}
           >
             <option value="">Select Category</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+            {normalizedCategories.map((cat) => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label}
               </option>
             ))}
           </select>

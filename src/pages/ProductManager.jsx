@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { orderService } from '../services/order.service';
-import { reviewsAPI } from '../services/api';
+import { categoriesAPI, productsAPI, reviewsAPI } from '../services/api';
+import ProductFormModal from '../components/ProductFormModal';
+import { useToast } from '../context/ToastContext';
 
 export default function ProductManager() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('delivery');
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +18,17 @@ export default function ProductManager() {
   const [reviewsError, setReviewsError] = useState(null);
   const [updatingReviewId, setUpdatingReviewId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoriesError, setCategoriesError] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [categorySubmitting, setCategorySubmitting] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState(null);
+  const [stockDrafts, setStockDrafts] = useState({});
+  const [stockUpdatingId, setStockUpdatingId] = useState(null);
+  const [productModalOpen, setProductModalOpen] = useState(false);
 
   const user = useMemo(() => {
     const raw = localStorage.getItem('user');
@@ -41,11 +55,23 @@ export default function ProductManager() {
     fetchDeliveries();
   }, [user, navigate]);
   
-    useEffect(() => {
-        if (activeTab === 'comments') {
-        fetchReviews();
-        }
-    }, [activeTab]);
+  useEffect(() => {
+    if (activeTab === 'comments') {
+      fetchReviews();
+    }
+
+    if (activeTab === 'categories') {
+      fetchCategories();
+    }
+
+    if (activeTab === 'products' || activeTab === 'stock') {
+      fetchProducts();
+    }
+
+    if (activeTab === 'products' && !categories.length) {
+      fetchCategories();
+    }
+  }, [activeTab]);
 
   const fetchDeliveries = async () => {
     try {
@@ -114,6 +140,130 @@ export default function ProductManager() {
       setReviewsError('Yorum listesi yüklenemedi. Lütfen tekrar deneyin.');
     } finally {
       setReviewsLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      setCategoriesError(null);
+      const res = await categoriesAPI.getAll();
+      const payload = res?.data?.data ?? res?.data;
+      const list = Array.isArray(payload) ? payload : payload?.categories ?? [];
+      const normalized = list.map((item) =>
+        typeof item === 'string' || typeof item === 'number'
+          ? { id: item, name: String(item), description: '' }
+          : item
+      );
+      setCategories(normalized);
+    } catch (err) {
+      console.error('Failed to load categories', err);
+      setCategories([]);
+      setCategoriesError('Kategori listesi yüklenemedi.');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true);
+      setProductsError(null);
+      const res = await productsAPI.getAll();
+      const payload = res?.data?.data ?? res?.data;
+      const list = Array.isArray(payload) ? payload : payload?.products ?? [];
+      setProducts(list);
+      setStockDrafts(
+        list.reduce((acc, item) => {
+          const id = item.id ?? item._id;
+          acc[id] = item.quantity_in_stock ?? item.stock ?? 0;
+          return acc;
+        }, {})
+      );
+    } catch (err) {
+      console.error('Failed to load products', err);
+      setProducts([]);
+      setProductsError('Ürün listesi yüklenemedi.');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  const handleCategorySubmit = async (event) => {
+    event.preventDefault();
+    if (!categoryForm.name.trim()) {
+      showToast('Kategori adı gerekli.', 'error');
+      return;
+    }
+
+    try {
+      setCategorySubmitting(true);
+      const res = await categoriesAPI.create({
+        name: categoryForm.name.trim(),
+        description: categoryForm.description.trim(),
+      });
+      const created = res?.data?.data ?? res?.data ?? {
+        id: Date.now(),
+        name: categoryForm.name.trim(),
+        description: categoryForm.description.trim(),
+      };
+      setCategories((prev) => [...prev, created]);
+      setCategoryForm({ name: '', description: '' });
+      showToast('Kategori eklendi.', 'success');
+    } catch (err) {
+      console.error('Failed to create category', err);
+      showToast('Kategori eklenemedi.', 'error');
+    } finally {
+      setCategorySubmitting(false);
+    }
+  };
+
+  const handleCategoryDelete = async (categoryId) => {
+    try {
+      await categoriesAPI.remove(categoryId);
+      setCategories((prev) => prev.filter((item) => item.id !== categoryId));
+      showToast('Kategori silindi.', 'success');
+    } catch (err) {
+      console.error('Failed to delete category', err);
+      showToast('Kategori silinemedi.', 'error');
+    }
+  };
+
+  const handleProductSave = async (payload) => {
+    try {
+      const res = await productsAPI.create(payload);
+      const created = res?.data?.data ?? res?.data ?? { ...payload, id: Date.now() };
+      setProducts((prev) => [...prev, created]);
+      showToast('Ürün eklendi.', 'success');
+    } catch (err) {
+      console.error('Failed to create product', err);
+      showToast('Ürün eklenemedi.', 'error');
+    } finally {
+      setProductModalOpen(false);
+    }
+  };
+
+  const handleStockUpdate = async (productId) => {
+    const nextStock = Number(stockDrafts[productId] ?? 0);
+    try {
+      setStockUpdatingId(productId);
+      await productsAPI.update(productId, {
+        quantity_in_stock: nextStock,
+        stock: nextStock,
+      });
+      setProducts((prev) =>
+        prev.map((item) =>
+          (item.id ?? item._id) === productId
+            ? { ...item, quantity_in_stock: nextStock, stock: nextStock }
+            : item
+        )
+      );
+      showToast('Stok güncellendi.', 'success');
+    } catch (err) {
+      console.error('Failed to update stock', err);
+      showToast('Stok güncellenemedi.', 'error');
+    } finally {
+      setStockUpdatingId(null);
     }
   };
 
@@ -359,6 +509,221 @@ export default function ProductManager() {
     );
   };
 
+  const renderCategoriesTab = () => {
+    if (categoriesLoading) {
+      return <div style={styles.emptyState}>Kategoriler yükleniyor...</div>;
+    }
+
+    if (categoriesError) {
+      return (
+        <div style={styles.emptyState}>
+          <p>{categoriesError}</p>
+          <button style={styles.primaryButton} onClick={fetchCategories}>
+            Tekrar Dene
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div style={styles.sectionHeader}>
+          <div>
+            <p style={styles.eyebrow}>Kategori Yönetimi</p>
+            <h3 style={styles.sectionTitle}>Yeni Kategori</h3>
+          </div>
+        </div>
+
+        <form onSubmit={handleCategorySubmit} style={styles.formRow}>
+          <input
+            type="text"
+            placeholder="Kategori adı"
+            value={categoryForm.name}
+            onChange={(event) =>
+              setCategoryForm((prev) => ({ ...prev, name: event.target.value }))
+            }
+            style={styles.input}
+          />
+          <input
+            type="text"
+            placeholder="Açıklama"
+            value={categoryForm.description}
+            onChange={(event) =>
+              setCategoryForm((prev) => ({ ...prev, description: event.target.value }))
+            }
+            style={styles.input}
+          />
+          <button
+            type="submit"
+            style={styles.primaryButton}
+            disabled={categorySubmitting}
+          >
+            Kategori Ekle
+          </button>
+        </form>
+
+        <div style={styles.tableWrapper}>
+          <div style={styles.tableHeader}>
+            <span style={{ flex: 0.3 }}>ID</span>
+            <span style={{ flex: 1 }}>Kategori Adı</span>
+            <span style={{ flex: 2 }}>Açıklama</span>
+            <span style={{ width: '140px' }}></span>
+          </div>
+          {categories.length ? (
+            categories.map((category) => (
+              <div key={category.id} style={styles.tableRow}>
+                <span style={{ flex: 0.3 }}>#{category.id}</span>
+                <span style={{ flex: 1 }}>{category.name}</span>
+                <span style={{ flex: 2 }}>{category.description || '—'}</span>
+                <span style={{ width: '140px' }}>
+                  <button
+                    style={styles.dangerButton}
+                    onClick={() => handleCategoryDelete(category.id)}
+                  >
+                    Sil
+                  </button>
+                </span>
+              </div>
+            ))
+          ) : (
+            <div style={styles.emptyState}>Henüz kategori bulunmuyor.</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderProductsTab = () => {
+    if (productsLoading) {
+      return <div style={styles.emptyState}>Ürünler yükleniyor...</div>;
+    }
+
+    if (productsError) {
+      return (
+        <div style={styles.emptyState}>
+          <p>{productsError}</p>
+          <button style={styles.primaryButton} onClick={fetchProducts}>
+            Tekrar Dene
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div style={styles.sectionHeader}>
+          <div>
+            <p style={styles.eyebrow}>Ürün Yönetimi</p>
+            <h3 style={styles.sectionTitle}>Ürün Ekle</h3>
+          </div>
+          <button style={styles.primaryButton} onClick={() => setProductModalOpen(true)}>
+            + Yeni Ürün
+          </button>
+        </div>
+
+        <div style={styles.tableWrapper}>
+          <div style={styles.tableHeader}>
+            <span style={{ flex: 0.3 }}>ID</span>
+            <span style={{ flex: 1 }}>Ürün</span>
+            <span style={{ flex: 1 }}>Kategori</span>
+            <span style={{ flex: 0.6 }}>Fiyat</span>
+            <span style={{ flex: 0.6 }}>Stok</span>
+          </div>
+          {products.length ? (
+            products.map((item) => (
+              <div key={item.id ?? item._id} style={styles.tableRow}>
+                <span style={{ flex: 0.3 }}>#{item.id ?? item._id}</span>
+                <span style={{ flex: 1 }}>{item.name}</span>
+                <span style={{ flex: 1 }}>
+                  {item.category?.name || item.category || item.category_name || item.category_id || '—'}
+                </span>
+                <span style={{ flex: 0.6 }}>${Number(item.price || 0).toFixed(2)}</span>
+                <span style={{ flex: 0.6 }}>{item.quantity_in_stock ?? item.stock ?? 0}</span>
+              </div>
+            ))
+          ) : (
+            <div style={styles.emptyState}>Henüz ürün bulunmuyor.</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStockTab = () => {
+    if (productsLoading) {
+      return <div style={styles.emptyState}>Stok listesi yükleniyor...</div>;
+    }
+
+    if (productsError) {
+      return (
+        <div style={styles.emptyState}>
+          <p>{productsError}</p>
+          <button style={styles.primaryButton} onClick={fetchProducts}>
+            Tekrar Dene
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div style={styles.sectionHeader}>
+          <div>
+            <p style={styles.eyebrow}>Stok Yönetimi</p>
+            <h3 style={styles.sectionTitle}>Ürün Stokları</h3>
+          </div>
+        </div>
+
+        <div style={styles.tableWrapper}>
+          <div style={styles.tableHeader}>
+            <span style={{ flex: 0.3 }}>ID</span>
+            <span style={{ flex: 1.2 }}>Ürün</span>
+            <span style={{ flex: 0.8 }}>Mevcut Stok</span>
+            <span style={{ flex: 0.8 }}>Yeni Stok</span>
+            <span style={{ width: '140px' }}></span>
+          </div>
+          {products.length ? (
+            products.map((item) => {
+              const id = item.id ?? item._id;
+              const currentStock = item.quantity_in_stock ?? item.stock ?? 0;
+              return (
+                <div key={id} style={styles.tableRow}>
+                  <span style={{ flex: 0.3 }}>#{id}</span>
+                  <span style={{ flex: 1.2 }}>{item.name}</span>
+                  <span style={{ flex: 0.8 }}>{currentStock}</span>
+                  <span style={{ flex: 0.8 }}>
+                    <input
+                      type="number"
+                      value={stockDrafts[id] ?? currentStock}
+                      onChange={(event) =>
+                        setStockDrafts((prev) => ({
+                          ...prev,
+                          [id]: event.target.value,
+                        }))
+                      }
+                      style={styles.stockInput}
+                    />
+                  </span>
+                  <span style={{ width: '140px' }}>
+                    <button
+                      style={styles.primaryButton}
+                      disabled={stockUpdatingId === id}
+                      onClick={() => handleStockUpdate(id)}
+                    >
+                      Güncelle
+                    </button>
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <div style={styles.emptyState}>Henüz stok bilgisi yok.</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={styles.page}>
       <header style={styles.header}>
@@ -372,6 +737,24 @@ export default function ProductManager() {
       </header>
 
       <div style={styles.tabs}>
+      <button
+          style={activeTab === 'categories' ? styles.activeTab : styles.tab}
+          onClick={() => setActiveTab('categories')}
+        >
+          Categories
+        </button>
+        <button
+          style={activeTab === 'products' ? styles.activeTab : styles.tab}
+          onClick={() => setActiveTab('products')}
+        >
+          Products
+        </button>
+        <button
+          style={activeTab === 'stock' ? styles.activeTab : styles.tab}
+          onClick={() => setActiveTab('stock')}
+        >
+          Manage Stock
+        </button>
         <button
           style={activeTab === 'comments' ? styles.activeTab : styles.tab}
           onClick={() => setActiveTab('comments')}
@@ -387,12 +770,19 @@ export default function ProductManager() {
       </div>
 
       <div style={styles.card}>
-        {activeTab === 'delivery' ? (
-          renderDeliveryTab()
-        ) : (
-          renderCommentsTab()
-        )}
+        {activeTab === 'delivery' && renderDeliveryTab()}
+        {activeTab === 'comments' && renderCommentsTab()}
+        {activeTab === 'categories' && renderCategoriesTab()}
+        {activeTab === 'products' && renderProductsTab()}
+        {activeTab === 'stock' && renderStockTab()}
       </div>
+      {productModalOpen && (
+        <ProductFormModal
+          categories={categories}
+          onClose={() => setProductModalOpen(false)}
+          onSave={handleProductSave}
+        />
+      )}
     </div>
   );
 }
@@ -488,6 +878,30 @@ const styles = {
     alignItems: 'center',
     fontSize: '0.95rem',
   },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '1rem',
+  },
+  sectionTitle: {
+    margin: '0.2rem 0 0',
+    fontSize: '1.4rem',
+    fontWeight: 700,
+  },
+  formRow: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr auto',
+    gap: '0.8rem',
+    marginBottom: '1.5rem',
+  },
+  input: {
+    padding: '0.65rem 0.8rem',
+    borderRadius: '10px',
+    border: '1px solid #cbd5e1',
+    background: 'white',
+    fontWeight: 600,
+  },
   filtersRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -574,6 +988,22 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: 700,
+  },
+  dangerButton: {
+    border: 'none',
+    background: '#ef4444',
+    color: 'white',
+    padding: '0.6rem 0.8rem',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontWeight: 700,
+  },
+  stockInput: {
+    width: '100%',
+    padding: '0.5rem 0.6rem',
+    borderRadius: '8px',
+    border: '1px solid #cbd5e1',
+    fontWeight: 600,
   },
   emptyState: {
     padding: '2rem',
