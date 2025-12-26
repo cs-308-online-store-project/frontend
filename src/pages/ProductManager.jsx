@@ -176,7 +176,7 @@ export default function ProductManager() {
       setStockDrafts(
         list.reduce((acc, item) => {
           const id = item.id ?? item._id;
-          acc[id] = item.quantity_in_stock ?? item.stock ?? 0;
+          acc[id] = item.stock ?? item.quantity_in_stock ?? 0;
           return acc;
         }, {})
       );
@@ -248,13 +248,12 @@ export default function ProductManager() {
     try {
       setStockUpdatingId(productId);
       await productsAPI.update(productId, {
-        quantity_in_stock: nextStock,
         stock: nextStock,
       });
       setProducts((prev) =>
         prev.map((item) =>
           (item.id ?? item._id) === productId
-            ? { ...item, quantity_in_stock: nextStock, stock: nextStock }
+            ? { ...item, stock: nextStock, in_stock: nextStock > 0 }
             : item
         )
       );
@@ -638,7 +637,7 @@ export default function ProductManager() {
                   {item.category?.name || item.category || item.category_name || item.category_id || '—'}
                 </span>
                 <span style={{ flex: 0.6 }}>${Number(item.price || 0).toFixed(2)}</span>
-                <span style={{ flex: 0.6 }}>{item.quantity_in_stock ?? item.stock ?? 0}</span>
+                <span style={{ flex: 0.6 }}>{item.stock ?? item.quantity_in_stock ?? 0}</span>
               </div>
             ))
           ) : (
@@ -685,7 +684,7 @@ export default function ProductManager() {
           {products.length ? (
             products.map((item) => {
               const id = item.id ?? item._id;
-              const currentStock = item.quantity_in_stock ?? item.stock ?? 0;
+              const currentStock = item.stock ?? item.quantity_in_stock ?? 0;
               return (
                 <div key={id} style={styles.tableRow}>
                   <span style={{ flex: 0.3 }}>#{id}</span>

@@ -16,11 +16,13 @@ export default function ProductFormModal({
     serial_number: product?.serial_number || "",
     description: product?.description || "",
     price: product?.price || "",
-    quantity_in_stock: product?.quantity_in_stock ?? "",
-    warranty_status: Boolean(product?.warranty_status) || false,
-    distributor: product?.distributor || "",
+    stock: product?.stock ?? product?.quantity_in_stock ?? "",
+    warranty_bool: Boolean(product?.warranty_bool ?? product?.warranty_status) || false,
+    warranty_status: String(product?.warranty_status ?? product?.warranty_bool) || "none",
+    distributor_info: product?.distributor_info || product?.distributor || "",
     category_id: product?.category_id || product?.category?.id || "",
     image_url: product?.image_url || "",
+    created_at: product?.created_at || "",
   });
 
   const [imagePreview, setImagePreview] = useState(
@@ -67,12 +69,16 @@ export default function ProductFormModal({
       return;
     }
 
+    const now = new Date().toISOString();
     const payload = {
       ...form,
       price: Number(form.price),
-      quantity_in_stock: Number(form.quantity_in_stock) || 0,
-      category_id: form.category_id || null,
-      warranty_status: Boolean(form.warranty_status),
+      stock: Number(form.stock) || 0,
+      //in_stock: Number(form.stock) > 0,
+      category_id: form.category_id ? Number(form.category_id) : null,
+      warranty_bool: Boolean(form.warranty_bool),
+      warranty_status: form.warranty_status,
+      created_at: form.created_at || now,
     };
 
     onSave(payload);
@@ -105,8 +111,8 @@ export default function ProductFormModal({
           <input
             placeholder="Quantity in Stock"
             type="number"
-            value={form.quantity_in_stock}
-            onChange={(e) => updateField("quantity_in_stock", e.target.value)}
+            value={form.stock}
+            onChange={(e) => updateField("stock", e.target.value)}
             style={S.input}
           />
 
@@ -126,8 +132,8 @@ export default function ProductFormModal({
 
           <input
             placeholder="Distributor"
-            value={form.distributor}
-            onChange={(e) => updateField("distributor", e.target.value)}
+            value={form.distributor_info}
+            onChange={(e) => updateField("distributor_info", e.target.value)}
             style={S.input}
           />
 
@@ -155,8 +161,12 @@ export default function ProductFormModal({
           <label style={S.checkboxRow}>
             <input
               type="checkbox"
-              checked={form.warranty_status}
-              onChange={(e) => updateField("warranty_status", e.target.checked)}
+              checked={form.warranty_bool}
+              onChange={(e) => {
+                const next = e.target.checked;
+                updateField("warranty_bool", next);
+                updateField("warranty_status", next);
+              }}
               style={{ marginRight: 8 }}
             />
             Warranty Active

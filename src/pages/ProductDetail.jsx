@@ -202,8 +202,8 @@ const toggleWishlist = async () => {
     { label: "Kategori", value: categoryLabel },
     { label: "Model", value: product.model },
     { label: "Seri Numarası", value: product.serial_number },
-    { label: "Distribütör", value: product.distributor },
-    { label: "Garanti", value: product.warranty_status ? "Aktif" : "Pasif" },
+    { label: "Distribütör", value: product.distributor_info || product.distributor },
+    { label: "Garanti", value: (product.warranty_bool ?? product.warranty_status) ? "Aktif" : "Pasif" },
     { label: "Stok", value: product.stock },
     { label: "Oluşturulma", value: product.created_at },
   ].filter((item) => item.value !== undefined && item.value !== null && item.value !== "");

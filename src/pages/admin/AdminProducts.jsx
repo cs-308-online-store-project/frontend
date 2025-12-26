@@ -161,12 +161,12 @@ export default function AdminProducts() {
                 </td>
                 <td style={S.bigText}>{p.name}</td>
                 <td style={S.bigText}>${p.price}</td>
-                <td style={S.bigText}>{p.quantity_in_stock ?? 0}</td>
+                <td style={S.bigText}>{p.stock ?? p.quantity_in_stock ?? 0}</td>
                 <td style={S.bigText}>{p.category?.name || p.category || p.category_name || p.category_id}</td>
                 <td style={S.bigText}>{p.model || "-"}</td>
                 <td style={S.bigText}>{p.serial_number || "-"}</td>
-                <td style={S.bigText}>{p.distributor || "-"}</td>
-                <td style={S.bigText}>{p.warranty_status ? "Active" : "Inactive"}</td>
+                <td style={S.bigText}>{p.distributor_info || p.distributor || "-"}</td>
+                <td style={S.bigText}>{p.warranty_bool ?? p.warranty_status ? "Active" : "Inactive"}</td>
                 <td style={S.actionCol}>
                   <button style={S.editBtn} onClick={() => openEdit(p)}>
                     Edit
