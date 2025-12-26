@@ -12,18 +12,18 @@ function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       setMessage('❌ Please fill in all fields');
       return;
     }
-  
+
     setLoading(true);
     setMessage('');
-  
+
     try {
       const response = await authAPI.login({ email, password });
-      
+
       // Token'ı localStorage'a kaydet
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
@@ -32,10 +32,10 @@ function Login() {
 
         window.dispatchEvent(new Event('loginStateChanged'));
 
-        // ✅ YENİ EKLENEN - Guest cart'ı backend'e transfer et
+        // ✅ Guest cart'ı backend'e transfer et
         try {
           const guestCart = JSON.parse(localStorage.getItem("cart") || "[]");
-          
+
           if (guestCart.length > 0) {
             console.log('🔄 Syncing guest cart to backend...', guestCart);
             localStorage.setItem("cart", "[]");
@@ -48,36 +48,45 @@ function Login() {
                 console.error("Error syncing cart item:", err);
               }
             }
-            
-            // Backend'den güncel cart'ı çek
-            
-            
+
             console.log('✅ Guest cart synced successfully!');
           }
+
+          // Backend'den güncel cart'ı çek
           const cartResponse = await cartAPI.getCart();
-            localStorage.setItem("cart", JSON.stringify(cartResponse.data.items || []));
-            window.dispatchEvent(new Event("cartUpdated"));
+          localStorage.setItem("cart", JSON.stringify(cartResponse.data.items || []));
+          window.dispatchEvent(new Event("cartUpdated"));
         } catch (syncError) {
           console.error('Cart sync error:', syncError);
           // Cart sync hatası olsa bile login'e devam et
         }
-        
+
         setMessage('✓ Login successful! Redirecting...');
-        
+
         // 1 saniye sonra uygun sayfaya git
         setTimeout(() => {
-          if (response.data.user?.role === 'product_manager') {
-            navigate('/product-manager');
+          const role = response.data.user?.role;
+
+          // ✅ Sadece bunu ekledik: sales manager direkt kendi sayfasına
+          if (role === 'sales_manager') {
+            navigate('/admin/sales-pricing', { replace: true });
             return;
           }
 
-          navigate('/products');
+          // ✅ Mevcut akış: product_manager aynı kalsın
+          if (role === 'product_manager') {
+            navigate('/product-manager', { replace: true });
+            return;
+          }
+
+          // ✅ Default
+          navigate('/products', { replace: true });
         }, 1000);
       }
     } catch (error) {
       console.error('Login error:', error);
       setMessage(
-        error.response?.data?.message || 
+        error.response?.data?.message ||
         '❌ Login failed. Please check your credentials.'
       );
     } finally {
@@ -114,9 +123,9 @@ function Login() {
         <div style={styles.formContainer}>
           <h2 style={styles.title}>Welcome Back</h2>
           <p style={styles.subtitle}>Sign in to continue shopping</p>
-          
+
           <form onSubmit={handleLogin} style={styles.form} noValidate>
-            {/* EMAIL INPUT - EKLENDİ */}
+            {/* EMAIL INPUT */}
             <div style={styles.formGroup}>
               <label style={styles.label}>EMAIL</label>
               <input
@@ -129,7 +138,7 @@ function Login() {
               />
             </div>
 
-            {/* PASSWORD INPUT - EKLENDİ */}
+            {/* PASSWORD INPUT */}
             <div style={styles.formGroup}>
               <label style={styles.label}>PASSWORD</label>
               <input
@@ -142,7 +151,7 @@ function Login() {
               />
             </div>
 
-            <button 
+            <button
               type="submit"
               disabled={loading}
               style={{

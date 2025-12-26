@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { authAPI } from "../services/api";
 
 export default function AdminLayout() {
   const [open, setOpen] = useState(true);
+  const navigate = useNavigate();
+
   const role = localStorage.getItem("role"); // "product_manager" | "sales_manager"
+
+  const handleExit = () => {
+    authAPI.logout(); // token + user + role siler
+    window.dispatchEvent(new Event("loginStateChanged")); // navbar vs update
+    navigate("/products", { replace: true }); // main page
+  };
 
   return (
     <div style={S.container}>
@@ -79,6 +88,19 @@ export default function AdminLayout() {
               </NavLink>
             </>
           )}
+
+          {/* ✅ EXIT (always visible) */}
+          <button
+            onClick={handleExit}
+            style={{
+              ...S.exitBtn,
+              width: open ? "100%" : "48px",
+              justifyContent: open ? "center" : "center",
+            }}
+            title="Exit"
+          >
+            {open ? "Exit" : "⎋"}
+          </button>
         </nav>
       </aside>
 
@@ -141,6 +163,7 @@ const S = {
     display: "flex",
     flexDirection: "column",
     gap: "1.4rem",
+    height: "100%", // ✅ so Exit can sit at bottom
   },
 
   link: ({ isActive }) => ({
@@ -163,6 +186,19 @@ const S = {
     marginLeft: "0.5rem",
     whiteSpace: "nowrap",
     transition: "opacity 0.3s",
+  },
+
+  exitBtn: {
+    marginTop: "auto", // ✅ pushes to bottom
+    padding: "1rem 1.2rem",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(255,255,255,0.08)",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: 900,
+    display: "flex",
+    alignItems: "center",
   },
 
   content: {
