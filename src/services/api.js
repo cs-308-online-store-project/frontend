@@ -87,4 +87,10 @@ export const userAPI = {
   updateProfile: (data) => api.put('/users/profile', data),
 };
 
+// Reports API
+export const reportsAPI = {
+  getSalesReport: () => api.get("/reports/sales"),
+};
+
+
 export default api;

@@ -8,10 +8,9 @@ import {
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
-import { ToastProvider } from "./context/ToastContext";  
+import { ToastProvider } from "./context/ToastContext";
 
 // CUSTOMER PAGES
-
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Products from "./pages/Products";
@@ -29,6 +28,10 @@ import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 
+// ✅ SALES MANAGER REPORTS
+import SalesReports from "./pages/admin/SalesReports";
+import PrivateRoute from "./components/PrivateRoute";
+
 function AppContent() {
   const location = useLocation();
 
@@ -38,11 +41,10 @@ function AppContent() {
       {location.pathname !== "/login" &&
         location.pathname !== "/register" &&
         !location.pathname.startsWith("/admin") &&
-        !location.pathname.startsWith("/product-manager") &&
-        <Navbar />}
+        !location.pathname.startsWith("/product-manager") && <Navbar />}
 
       <Routes>
-      <Route path="/" element={<Navigate to="/products" />} />
+        <Route path="/" element={<Navigate to="/products" />} />
 
         {/* AUTH */}
         <Route path="/login" element={<Login />} />
@@ -55,7 +57,6 @@ function AppContent() {
         <Route path="/orders/:id" element={<OrderDetail />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
-        <Route path="/checkout" element={<Checkout />} />
         <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/profile" element={<Profile />} />
 
@@ -66,17 +67,27 @@ function AppContent() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
+
+          {/* ✅ SALES MANAGER */}
+          <Route
+            path="reports"
+            element={
+              <PrivateRoute role="sales_manager">
+                <SalesReports />
+              </PrivateRoute>
+            }
+          />
         </Route>
 
         <Route path="*" element={<Navigate to="/products" replace />} />
-        </Routes>
+      </Routes>
     </>
   );
 }
 
 export default function App() {
   return (
-    <ToastProvider>      
+    <ToastProvider>
       <Router>
         <AppContent />
       </Router>
