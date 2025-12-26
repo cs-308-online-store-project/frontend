@@ -30,6 +30,7 @@ import AdminProducts from "./pages/admin/AdminProducts";
 
 // ✅ SALES MANAGER REPORTS
 import SalesReports from "./pages/admin/SalesReports";
+import SalesPricing from "./pages/admin/SalesPricing";
 import PrivateRoute from "./components/PrivateRoute";
 
 function AppContent() {
@@ -77,6 +78,15 @@ function AppContent() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="sales-pricing"
+            element={
+              <PrivateRoute role="sales_manager">
+                <SalesPricing />
+              </PrivateRoute>
+            }
+          />
+
         </Route>
 
         <Route path="*" element={<Navigate to="/products" replace />} />

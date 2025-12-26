@@ -1,17 +1,17 @@
-import axios from 'axios';
+import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Token'ı otomatik ekle
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -20,14 +20,15 @@ api.interceptors.request.use((config) => {
 
 // Auth API
 export const authAPI = {
-  register: (userData) => api.post('/auth/register', userData),
-  login: (credentials) => api.post('/auth/login', credentials),
+  register: (userData) => api.post("/auth/register", userData),
+  login: (credentials) => api.post("/auth/login", credentials),
   logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role"); // ✅ EKLENDİ (karışıklığı engeller)
   },
   getCurrentUser: () => {
-    const user = localStorage.getItem('user');
+    const user = localStorage.getItem("user");
     return user ? JSON.parse(user) : null;
   },
 };
@@ -36,61 +37,78 @@ export const authAPI = {
 export const productsAPI = {
   getAll: (query = "") => api.get(`/products${query}`),
   getById: (id) => api.get(`/products/${id}`),
-  create: (payload) => api.post('/products', payload),
+  create: (payload) => api.post("/products", payload),
   update: (id, payload) => api.put(`/products/${id}`, payload),
   remove: (id) => api.delete(`/products/${id}`),
 };
 
+// ✅ Sales Manager Product Actions (price / discount only)
+export const salesManagerAPI = {
+  updatePrice: (id, price) =>
+    api.put(`/products/${id}/price`, { price: Number(price) }),
+
+  applyDiscount: (id, discountRate) =>
+    api.put(`/products/${id}/discount`, { discountRate: Number(discountRate) }),
+};
+
 // Categories API
 export const categoriesAPI = {
-  getAll: () => api.get('/categories'),
-  create: (payload) => api.post('/categories', payload),
+  getAll: () => api.get("/categories"),
+  create: (payload) => api.post("/categories", payload),
   remove: (id) => api.delete(`/categories/${id}`),
 };
 
 // Cart API
 export const cartAPI = {
-  getCart: () => api.get('/cart'),
-  addToCart: (productId, quantity) => api.post('/cart/add', { productId, quantity }),
-  updateQuantity: (itemId, quantity) => api.put(`/cart/items/${itemId}`, { quantity }),
+  getCart: () => api.get("/cart"),
+  addToCart: (productId, quantity) =>
+    api.post("/cart/add", { productId, quantity }),
+  updateQuantity: (itemId, quantity) =>
+    api.put(`/cart/items/${itemId}`, { quantity }),
   removeItem: (itemId) => api.delete(`/cart/items/${itemId}`),
 };
 
 // Order API
 export const orderAPI = {
-  createOrder: (userId, address) => api.post('/orders', { userId, address }),
-  getOrders: () => api.get('/orders'),
+  createOrder: (userId, address) => api.post("/orders", { userId, address }),
+  getOrders: () => api.get("/orders"),
   getOrderById: (orderId) => api.get(`/orders/${orderId}`),
-  cancelOrder: (orderId) => api.post(`/orders/${orderId}/cancel`), // ✅ YENİ
+  cancelOrder: (orderId) => api.post(`/orders/${orderId}/cancel`),
+
   // Invoice endpoints
   generateInvoice: (orderId) => api.post(`/invoices/${orderId}/generate`),
-  downloadInvoice: (orderId) => api.get(`/invoices/${orderId}/download`, { responseType: 'blob' }),
+  downloadInvoice: (orderId) =>
+    api.get(`/invoices/${orderId}/download`, { responseType: "blob" }),
 };
 
 // Reviews API
 export const reviewsAPI = {
-  getByProduct: (productId) => api.get('/reviews', { params: { productId } }),
-  create: (payload) => api.post('/reviews', payload),
-  getAll: () => api.get('/reviews'),
-  updateStatus: (reviewId, approved) => api.put(`/reviews/${reviewId}/status`, { approved }),
+  getByProduct: (productId) => api.get("/reviews", { params: { productId } }),
+  create: (payload) => api.post("/reviews", payload),
+  getAll: () => api.get("/reviews"),
+  updateStatus: (reviewId, approved) =>
+    api.put(`/reviews/${reviewId}/status`, { approved }),
 };
+
 // Wishlist API
 export const wishlistAPI = {
-  getWishlist: () => api.get('/wishlist'),
-  getCount: () => api.get('/wishlist/count'),
-  addToWishlist: (productId) => api.post('/wishlist/add', { product_id: productId }),
-  removeFromWishlist: (productId) => api.delete(`/wishlist/remove/${productId}`),
+  getWishlist: () => api.get("/wishlist"),
+  getCount: () => api.get("/wishlist/count"),
+  addToWishlist: (productId) =>
+    api.post("/wishlist/add", { product_id: productId }),
+  removeFromWishlist: (productId) =>
+    api.delete(`/wishlist/remove/${productId}`),
 };
+
 // User API
 export const userAPI = {
-  getProfile: () => api.get('/users/profile'),
-  updateProfile: (data) => api.put('/users/profile', data),
+  getProfile: () => api.get("/users/profile"),
+  updateProfile: (data) => api.put("/users/profile", data),
 };
 
 // Reports API
 export const reportsAPI = {
   getSalesReport: () => api.get("/reports/sales"),
 };
-
 
 export default api;
