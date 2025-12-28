@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import HeartIcon from "./icons/HeartIcon";
-import { authAPI, wishlistAPI } from "../services/api";
+import { authAPI, wishlistAPI,cartAPI } from "../services/api";
 
 export default function Navbar() {
   const navigate = useNavigate();

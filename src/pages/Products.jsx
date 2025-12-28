@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import SortDropdown from "../components/SortDropdown";
-import { categoriesAPI, productsAPI } from "../services/api";
+import { categoriesAPI, productsAPI,cartAPI } from "../services/api";
 
 // ✅ Yardımcı: Listeyi sort değerine göre sıralar (UI-only)
 function applySort(items, sortKey) {
@@ -41,43 +41,43 @@ export default function Products() {
   const [error, setError] = useState("");
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [notification, setNotification] = useState("");
 
-useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-  (async () => {
-    try {
-      setLoading(true);
-      setError("");
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
 
-      // 🔥 Backend’e sort parametresi gönderiyoruz
-      const res = await productsAPI.getAll(`?sort=${sort}`);
+        // 🔥 Backend’e sort parametresi gönderiyoruz
+        const res = await productsAPI.getAll(`?sort=${sort}`);
 
-      const payload = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(payload) ? payload : payload?.products ?? [];
+        const payload = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(payload) ? payload : payload?.products ?? [];
 
-      if (mounted) {
-        setProducts(list);
-        setFilteredProducts(list);
-        if (!list.length) setError("No products found");
+        if (mounted) {
+          setProducts(list);
+          setFilteredProducts(list);
+          if (!list.length) setError("No products found");
+        }
+      } catch (err) {
+        if (mounted) {
+          console.error("Products could not be loaded from the API.", err);
+          setError("Products could not be loaded from the API.");
+          setProducts([]);
+          setFilteredProducts([]);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-    } catch (err) {
-      if (mounted) {
-        console.error("Products could not be loaded from the API.", err);
-        setError("Products could not be loaded from the API.");
-        setProducts([]);
-        setFilteredProducts([]);
-      }
-    } finally {
-      if (mounted) setLoading(false);
-    }
-  })();
+    })();
 
-  return () => {
-    mounted = false;
-  };
-}, [sort]); // 🔥 sort değişince tekrar API çağrılır
-
+    return () => {
+      mounted = false;
+    };
+  }, [sort]); // 🔥 sort değişince tekrar API çağrılır
 
   useEffect(() => {
     let mounted = true;
@@ -198,6 +198,53 @@ useEffect(() => {
   const handleSearch = (term) => setSearchTerm(term);
 
   const handleSortChange = (sortKey) => setSort(sortKey || "newest");
+
+const handleAddToCart = async (product) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login to add items to cart");
+      navigate("/login");  
+      return;
+    }
+
+    const productId = product.id || product._id;
+
+    // 1️⃣ BACKEND
+    await cartAPI.addToCart(productId, 1);
+
+    // 2️⃣ FRONTEND (Navbar badge source)
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    const existingItem = cart.find(item => item.id === productId);
+
+    if (existingItem) {
+      existingItem.quantity += 1;
+    } else {
+      cart.push({
+        id: productId,
+        name: product.name,
+        price: product.price,
+        image: product.image_url,
+        quantity: 1,
+      });
+    }
+    localStorage.setItem("cart", JSON.stringify(cart));
+
+    // 3️⃣ Notify Navbar
+    window.dispatchEvent(new Event("cartUpdated"));
+
+    // 4️⃣ Toast
+    setNotification("Added to bag");
+    setTimeout(() => setNotification(""), 2000);
+
+  } catch (error) {
+    console.error("Add to cart error:", error);
+    alert(error.response?.data?.error || "Failed to add to cart");
+  }
+};
+
+
 
   if (loading) return <div style={{ padding: "4rem" }}>Loading...</div>;
 
@@ -361,14 +408,33 @@ useEffect(() => {
                   <div style={styles.info}>
                   <div style={styles.category}>{productIdLabel}</div>
                   <div style={styles.name}>{product.name}</div>
-                    <div style={styles.price}>
-                      ${Number(product.price).toFixed(2)}
-                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                        <span style={styles.price}>${Number(product.price).toFixed(2)}</span>
+                      <button
+                          style={styles.addToCartButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToCart(product);
+                          }}
+                        >
+                          Add to Bag
+                        </button>
+
+                      </div>
                   </div>
                 </div>
               );
             })}
           </div>
+            {notification && (
+              <div style={styles.toast}>
+                <span style={styles.toastIcon}>✓</span>
+                <span>{notification}</span>
+              </div>
+            )}
+
+
+
         </div>
       </div>
     </div>
@@ -537,4 +603,68 @@ const styles = {
     fontSize: "1.15rem",
     fontWeight: 800,
   },
+
+  addToCartButton: {
+    marginTop: "0.5rem",
+    padding: "0.55rem 1rem",
+    fontSize: "0.9rem",
+    fontWeight: 700,
+    color: "black",
+    background: "white",
+    border: "1px solid black",
+    borderRadius: "4px",
+    cursor: "pointer",
+  },
+  
+  notification: {
+    marginTop: "1rem",
+    padding: "1rem",
+    backgroundColor: "#d1e7dd",
+    color: "#0f5132",
+    borderRadius: "0.375rem",
+    border: "1px solid #badbcc",
+    fontSize: "1rem",
+    fontWeight: 500,
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+
+  toast: {
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  display: "flex",
+  alignItems: "center",
+  gap: "0.6rem",
+
+  backgroundColor: "#111",
+  color: "white",
+
+  padding: "0.75rem 1.2rem",
+  borderRadius: "10px",
+
+  fontSize: "0.95rem",
+  fontWeight: 600,
+
+  boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+  zIndex: 9999,
+},
+
+toastIcon: {
+  width: "22px",
+  height: "22px",
+  borderRadius: "50%",
+  backgroundColor: "#22c55e", // ✅ green tick
+  color: "white",
+
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+
+  fontSize: "0.85rem",
+  fontWeight: 800,
+},
+
+
 };

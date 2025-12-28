@@ -153,10 +153,6 @@ nav a:hover::after {
   text-transform: uppercase;
 }
 
-.add-cart-btn:disabled {
-  background: #aaa;
-  cursor: not-allowed;
-}
 
 .product-id {
   font-size: 0.8rem;
@@ -165,3 +161,5 @@ nav a:hover::after {
   font-weight: 500;
   letter-spacing: 0.05em;
 }
+
+
