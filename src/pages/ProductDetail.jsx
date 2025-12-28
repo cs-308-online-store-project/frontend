@@ -105,6 +105,7 @@ const toggleWishlist = async () => {
   try {
     if (isInWishlist) {
       await wishlistAPI.removeFromWishlist(product.id);
+      window.dispatchEvent(new Event("wishlistUpdated"));
       setIsInWishlist(false);
       alert("❤️ Removed from wishlist");
     } else {

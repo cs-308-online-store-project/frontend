@@ -16,7 +16,7 @@ export default function Wishlist() {
     try {
       setLoading(true);
       const response = await wishlistAPI.getWishlist();
-      setWishlist(response.data.data || []);
+      setWishlist(response.data.items || []);
     } catch (err) {
       console.error('Wishlist error:', err);
       setError('Failed to load wishlist');
@@ -28,6 +28,7 @@ export default function Wishlist() {
   const removeFromWishlist = async (productId) => {
     try {
       await wishlistAPI.removeFromWishlist(productId);
+      window.dispatchEvent(new Event("wishlistUpdated"));
       setWishlist(wishlist.filter(item => item.id !== productId));
     } catch (err) {
       console.error('Remove error:', err);

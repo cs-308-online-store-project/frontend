@@ -94,11 +94,12 @@ export const reviewsAPI = {
 export const wishlistAPI = {
   getWishlist: () => api.get("/wishlist"),
   getCount: () => api.get("/wishlist/count"),
-  addToWishlist: (productId) =>
-    api.post("/wishlist/add", { product_id: productId }),
-  removeFromWishlist: (productId) =>
-    api.delete(`/wishlist/remove/${productId}`),
+
+  // Jira-friendly:
+  addToWishlist: (productId) => api.post(`/wishlist/${productId}`),
+  removeFromWishlist: (productId) => api.delete(`/wishlist/${productId}`),
 };
+
 
 // User API
 export const userAPI = {

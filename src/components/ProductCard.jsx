@@ -30,7 +30,7 @@ export default function ProductCard({ product }) {
         }
 
         const response = await wishlistAPI.getWishlist();
-        const wishlistItems = response.data.data || [];
+        const wishlistItems = response.data.items || [];
         const exists = wishlistItems.some(
           (item) => item.id === (p.id || p._id)
         );
