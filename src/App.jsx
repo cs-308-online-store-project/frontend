@@ -38,6 +38,8 @@ import AdminChat from "./pages/admin/AdminChat";
 import SalesReports from "./pages/admin/SalesReports";
 import SalesPricing from "./pages/admin/SalesPricing";
 import PrivateRoute from "./components/PrivateRoute";
+import Notifications from "./pages/Notifications";
+
 
 function AppContent() {
   const location = useLocation();
@@ -95,6 +97,9 @@ function AppContent() {
           />
 
         </Route>
+
+        <Route path="/notifications" element={<Notifications />} />
+
 
         <Route path="*" element={<Navigate to="/products" replace />} />
       </Routes>

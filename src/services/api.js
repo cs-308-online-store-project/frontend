@@ -49,6 +49,7 @@ export const salesManagerAPI = {
 
   applyDiscount: (id, discountRate) =>
     api.put(`/products/${id}/discount`, { discountRate: Number(discountRate) }),
+
 };
 
 // Categories API
@@ -111,5 +112,19 @@ export const userAPI = {
 export const reportsAPI = {
   getSalesReport: () => api.get("/reports/sales"),
 };
+
+// NOTIFICATIONS
+export const fetchNotifications = () =>
+  api.get('/notifications').then(res => res.data);
+
+export const fetchUnreadNotificationCount = () =>
+  api.get('/notifications/unread-count').then(res => res.data);
+
+export const markNotificationRead = (id) =>
+  api.patch(`/notifications/${id}/read`).then(res => res.data);
+
+export const markAllNotificationsRead = () =>
+  api.patch('/notifications/read-all').then(res => res.data);
+
 
 export default api;

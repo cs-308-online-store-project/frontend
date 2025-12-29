@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import HeartIcon from "./icons/HeartIcon";
-import { authAPI, wishlistAPI,cartAPI } from "../services/api";
+import { authAPI, wishlistAPI, fetchUnreadNotificationCount } from "../services/api";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ export default function Navbar() {
   // Cart state
   const [cart, setCart] = useState([]);
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [notifCount, setNotifCount] = useState(0);
 
   // Login state
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -19,7 +20,7 @@ export default function Navbar() {
   // User dropdown state
   const [open, setOpen] = useState(false);
 
-  // READ CART from localStorage + listners
+  // READ CART from localStorage + listeners
   useEffect(() => {
     const updateCart = () => {
       const cartData = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -37,65 +38,90 @@ export default function Navbar() {
   }, []);
 
   // READ LOGIN STATE from localStorage
- // READ LOGIN STATE from localStorage
-useEffect(() => {
-  const updateLoginState = () => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
+  useEffect(() => {
+    const updateLoginState = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
 
-    setIsLoggedIn(!!token);
+      setIsLoggedIn(!!token);
 
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch {
+      if (userData) {
+        try {
+          setUser(JSON.parse(userData));
+        } catch {
+          setUser(null);
+        }
+      } else {
         setUser(null);
       }
-    } else {
-      setUser(null);
-    }
-  };
+    };
 
-  updateLoginState();
+    updateLoginState();
 
-  // Login değiştiğinde güncelle
-  window.addEventListener("loginStateChanged", updateLoginState);
+    window.addEventListener("loginStateChanged", updateLoginState);
 
-  return () => {
-    window.removeEventListener("loginStateChanged", updateLoginState);
-  };
-}, []);
+    return () => {
+      window.removeEventListener("loginStateChanged", updateLoginState);
+    };
+  }, []);
 
-// READ WISHLIST COUNT
-useEffect(() => {
-  const fetchWishlistCount = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (token) {
-        const response = await wishlistAPI.getCount();
-        setWishlistCount(response.data.count || 0);
-      } else {
+  // READ WISHLIST COUNT
+  useEffect(() => {
+    const fetchWishlistCount = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          const response = await wishlistAPI.getCount();
+          setWishlistCount(response.data.count || 0);
+        } else {
+          setWishlistCount(0);
+        }
+      } catch (error) {
+        console.error("Wishlist count error:", error);
         setWishlistCount(0);
       }
-    } catch (error) {
-      console.error("Wishlist count error:", error);
-      setWishlistCount(0);
-    }
-  };
+    };
 
-  fetchWishlistCount();
+    fetchWishlistCount();
+    window.addEventListener("wishlistUpdated", fetchWishlistCount);
 
-  // Wishlist değiştiğinde güncelle
-  window.addEventListener("wishlistUpdated", fetchWishlistCount);
+    return () => {
+      window.removeEventListener("wishlistUpdated", fetchWishlistCount);
+    };
+  }, [isLoggedIn]);
 
-  return () => {
-    window.removeEventListener("wishlistUpdated", fetchWishlistCount);
-  };
-}, [isLoggedIn]);
+  // READ NOTIFICATION COUNT
+  useEffect(() => {
+    const fetchNotifCount = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token) {
+          const data = await fetchUnreadNotificationCount(); // {success, count}
+          setNotifCount(data.count || 0);
+        } else {
+          setNotifCount(0);
+        }
+      } catch {
+        setNotifCount(0);
+      }
+    };
+
+    fetchNotifCount();
+    window.addEventListener("notificationsUpdated", fetchNotifCount);
+
+    // polling (10sn)
+    const t = setInterval(fetchNotifCount, 10000);
+
+    return () => {
+      window.removeEventListener("notificationsUpdated", fetchNotifCount);
+      clearInterval(t);
+    };
+  }, [isLoggedIn]);
+
   // HANDLE LOGOUT
   const handleLogout = async () => {
     try {
-      await authAPI.logout?.(); // Backend API varsa çalışır, yoksa sıkıntı yok
+      await authAPI.logout?.();
     } catch (err) {
       console.log("Logout warning:", err);
     }
@@ -106,8 +132,12 @@ useEffect(() => {
     setIsLoggedIn(false);
     setUser(null);
     setOpen(false);
+    setWishlistCount(0);
+    setNotifCount(0);
 
-    window.dispatchEvent(new Event('loginStateChanged'));
+    window.dispatchEvent(new Event("loginStateChanged"));
+    window.dispatchEvent(new Event("wishlistUpdated"));
+    window.dispatchEvent(new Event("notificationsUpdated"));
 
     navigate("/login");
   };
@@ -152,12 +182,19 @@ useEffect(() => {
 
       {/* RIGHT SECTION */}
       <div style={S.right}>
-        {/* FAVORITES */}
         {/* WISHLIST */}
         {isLoggedIn && (
-          <Link to="/wishlist" style={S.cartWrapper}>
+          <Link to="/wishlist" style={S.cartWrapper} aria-label="Wishlist">
             <HeartIcon active={false} size={26} />
             {wishlistCount > 0 && <span style={S.badge}>{wishlistCount}</span>}
+          </Link>
+        )}
+
+        {/* NOTIFICATIONS */}
+        {isLoggedIn && (
+          <Link to="/notifications" style={S.cartWrapper} aria-label="Notifications">
+            <span style={{ fontSize: "1.35rem" }}>🔔</span>
+            {notifCount > 0 && <span style={S.badge}>{notifCount}</span>}
           </Link>
         )}
 
@@ -172,32 +209,32 @@ useEffect(() => {
             </button>
 
             {open && (
-          <div style={S.dropdown}>
-            <button
-              style={S.dropdownItem}
-              onClick={() => {
-                navigate("/profile");
-                setOpen(false);
-              }}
-            >
-              My Profile
-            </button>
-            
-            <button
-              style={S.dropdownItem}
-              onClick={() => {
-                navigate("/orders");
-                setOpen(false);
-              }}
-            >
-              My Orders
-            </button>
+              <div style={S.dropdown}>
+                <button
+                  style={S.dropdownItem}
+                  onClick={() => {
+                    navigate("/profile");
+                    setOpen(false);
+                  }}
+                >
+                  My Profile
+                </button>
 
-            <button style={S.dropdownItemDanger} onClick={handleLogout}>
-              Logout
-            </button>
-          </div>
-        )}
+                <button
+                  style={S.dropdownItem}
+                  onClick={() => {
+                    navigate("/orders");
+                    setOpen(false);
+                  }}
+                >
+                  My Orders
+                </button>
+
+                <button style={S.dropdownItemDanger} onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <Link to="/login" style={S.linkSmall}>
@@ -206,7 +243,7 @@ useEffect(() => {
         )}
 
         {/* CART */}
-        <Link to="/cart" style={S.cartWrapper}>
+        <Link to="/cart" style={S.cartWrapper} aria-label="Cart">
           <span style={S.cartIcon}>🛒</span>
           {cart.length > 0 && <span style={S.badge}>{cart.length}</span>}
         </Link>
@@ -329,7 +366,6 @@ const S = {
   },
 
   // CART
-  iconWrapper: { cursor: "pointer" },
   cartWrapper: { position: "relative", cursor: "pointer" },
   cartIcon: { fontSize: "1.45rem" },
   badge: {

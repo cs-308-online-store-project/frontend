@@ -245,7 +245,40 @@ export default function SalesPricing() {
                     </div>
                   </td>
 
-                  <td style={{ padding: 10 }}>{p.price}</td>
+                  <td style={{ padding: 10 }}>
+                    {(() => {
+                      const price = Number(p?.price);
+                      const listPrice = Number(p?.list_price);
+                      const discounted = Number(p?.discounted_price);
+                      const active = p?.discount_active === true || p?.discount_active === 1;
+
+                      // discount yoksa normal fiyat
+                      if (!active || !Number.isFinite(discounted)) {
+                        return Number.isFinite(price) ? price.toFixed(2) : "-";
+                      }
+
+                      // discount varsa: discounted göster, üstünü çizili list_price göster
+                      return (
+                        <>
+                          {discounted.toFixed(2)}
+                          {Number.isFinite(listPrice) ? (
+                            <span
+                              style={{
+                                marginLeft: 8,
+                                opacity: 0.7,
+                                textDecoration: "line-through",
+                              }}
+                            >
+                              {listPrice.toFixed(2)}
+                            </span>
+                          ) : null}
+                        </>
+                      );
+                    })()}
+                  </td>
+
+
+
 
                   <td style={{ padding: 10 }}>
                     <input
