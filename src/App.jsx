@@ -8,7 +8,12 @@ import {
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+<<<<<<< Updated upstream
 import { ToastProvider } from "./context/ToastContext";
+=======
+import ChatButton from "./chat/ChatButton";
+import { ToastProvider } from "./context/ToastContext";  
+>>>>>>> Stashed changes
 
 // CUSTOMER PAGES
 import Login from "./pages/Login";
@@ -27,6 +32,7 @@ import Profile from "./pages/Profile";
 import AdminLayout from "./layout/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
+import AdminChat from "./pages/admin/AdminChat";
 
 // ✅ SALES MANAGER REPORTS
 import SalesReports from "./pages/admin/SalesReports";
@@ -68,6 +74,7 @@ function AppContent() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
+<<<<<<< Updated upstream
 
           {/* ✅ SALES MANAGER */}
           <Route
@@ -91,6 +98,19 @@ function AppContent() {
 
         <Route path="*" element={<Navigate to="/products" replace />} />
       </Routes>
+=======
+          <Route path="chat" element={<AdminChat />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/products" replace />} />
+        </Routes>
+
+      {/* Chat Button - Show everywhere except login/register */}
+      {location.pathname !== "/login" && 
+       location.pathname !== "/register" && 
+       !location.pathname.startsWith("/admin") &&
+       <ChatButton />}
+>>>>>>> Stashed changes
     </>
   );
 }
