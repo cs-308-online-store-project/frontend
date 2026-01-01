@@ -64,7 +64,7 @@ export default function AdminLayout() {
                 </span>
               </NavLink>
 
-<<<<<<< Updated upstream
+
               <NavLink to="/admin/users" style={S.link}>
                 <span style={{ ...S.linkText, opacity: open ? 1 : 0 }}>
                   Users
@@ -87,6 +87,13 @@ export default function AdminLayout() {
                   Sales Reports
                 </span>
               </NavLink>
+
+               <NavLink to="/admin/refunds" style={S.link}>
+                <span style={{ ...S.linkText, opacity: open ? 1 : 0 }}>
+                  Refund Requests
+                </span>
+              </NavLink>
+
             </>
           )}
 
@@ -102,7 +109,7 @@ export default function AdminLayout() {
           >
             {open ? "Exit" : "⎋"}
           </button>
-=======
+
           <NavLink to="/admin/users" style={S.link}>
             <span style={{ ...S.linkText, opacity: open ? 1 : 0 }}>Users</span>
           </NavLink>
@@ -110,7 +117,7 @@ export default function AdminLayout() {
           <NavLink to="/admin/chat" style={S.link}>
             <span style={{ ...S.linkText, opacity: open ? 1 : 0 }}>Chat</span>
           </NavLink>
->>>>>>> Stashed changes
+
         </nav>
       </aside>
 

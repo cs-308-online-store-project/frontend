@@ -417,7 +417,7 @@ const handleAddToCart = async (product) => {
                             handleAddToCart(product);
                           }}
                         >
-                          Add to Bag
+                          Add
                         </button>
 
                       </div>

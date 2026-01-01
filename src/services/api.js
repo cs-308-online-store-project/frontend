@@ -1,4 +1,9 @@
+
+
 import axios from "axios";
+
+
+console.log("VITE_API_URL =", import.meta.env.VITE_API_URL);
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -127,4 +132,17 @@ export const markAllNotificationsRead = () =>
   api.patch('/notifications/read-all').then(res => res.data);
 
 
+// REFUND API
+export const refundAPI = {
+  create: (payload) => api.post('/refunds', payload),
+   getMyRefunds: () => api.get('/refunds/my'),
+
+    getAll: () => api.get("/refunds"),
+  updateStatus: (id, status) =>
+    api.patch(`/refunds/${id}`, { status }),
+};
+
+
 export default api;
+
+

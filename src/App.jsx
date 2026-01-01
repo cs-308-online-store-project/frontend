@@ -8,12 +8,10 @@ import {
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
-<<<<<<< Updated upstream
+
 import { ToastProvider } from "./context/ToastContext";
-=======
+
 import ChatButton from "./chat/ChatButton";
-import { ToastProvider } from "./context/ToastContext";  
->>>>>>> Stashed changes
 
 // CUSTOMER PAGES
 import Login from "./pages/Login";
@@ -39,7 +37,7 @@ import SalesReports from "./pages/admin/SalesReports";
 import SalesPricing from "./pages/admin/SalesPricing";
 import PrivateRoute from "./components/PrivateRoute";
 import Notifications from "./pages/Notifications";
-
+import SalesRefunds from "./pages/admin/SalesRefunds";
 
 function AppContent() {
   const location = useLocation();
@@ -76,7 +74,6 @@ function AppContent() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
-<<<<<<< Updated upstream
 
           {/* ✅ SALES MANAGER */}
           <Route
@@ -96,26 +93,30 @@ function AppContent() {
             }
           />
 
+          <Route
+              path="refunds"
+              element={
+                <PrivateRoute role="sales_manager">
+                  <SalesRefunds />
+                </PrivateRoute>
+              }
+            />
+
+
+          <Route path="chat" element={<AdminChat />} />
         </Route>
 
         <Route path="/notifications" element={<Notifications />} />
 
-
         <Route path="*" element={<Navigate to="/products" replace />} />
       </Routes>
-=======
-          <Route path="chat" element={<AdminChat />} />
-        </Route>
 
-        <Route path="*" element={<Navigate to="/products" replace />} />
-        </Routes>
+
 
       {/* Chat Button - Show everywhere except login/register */}
-      {location.pathname !== "/login" && 
-       location.pathname !== "/register" && 
-       !location.pathname.startsWith("/admin") &&
-       <ChatButton />}
->>>>>>> Stashed changes
+      {location.pathname !== "/login" &&
+        location.pathname !== "/register" &&
+        !location.pathname.startsWith("/admin") && <ChatButton />}
     </>
   );
 }
