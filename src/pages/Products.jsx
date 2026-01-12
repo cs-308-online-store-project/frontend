@@ -4,15 +4,20 @@ import { useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import SortDropdown from "../components/SortDropdown";
 import { categoriesAPI, productsAPI,cartAPI } from "../services/api";
+import { getPricingInfo } from "../utils/pricing";
 
 // ✅ Yardımcı: Listeyi sort değerine göre sıralar (UI-only)
 function applySort(items, sortKey) {
   const list = [...items];
   switch (sortKey) {
     case "price_asc":
-      return list.sort((a, b) => a.price - b.price);
+      return list.sort(
+        (a, b) => getPricingInfo(a).effectivePrice - getPricingInfo(b).effectivePrice
+      );
     case "price_desc":
-      return list.sort((a, b) => b.price - a.price);
+      return list.sort(
+        (a, b) => getPricingInfo(b).effectivePrice - getPricingInfo(a).effectivePrice
+      );
     case "name_asc":
       return list.sort((a, b) => a.name.localeCompare(b.name));
     case "name_desc":
@@ -224,7 +229,7 @@ const handleAddToCart = async (product) => {
       cart.push({
         id: productId,
         name: product.name,
-        price: product.price,
+        price: getPricingInfo(product).effectivePrice,
         image: product.image_url,
         quantity: 1,
       });
@@ -366,6 +371,11 @@ const handleAddToCart = async (product) => {
                 `https://picsum.photos/seed/${id || "product"}/800/800`;
                 const productIdLabel = id ? `ID: #${id}` : "";
                 const targetPath = id ? `/products/${id}` : "/products";
+                const pricing = getPricingInfo(product);
+                const showDiscount =
+                  pricing.hasDiscount &&
+                  Number.isFinite(pricing.listPrice) &&
+                  pricing.listPrice !== pricing.effectivePrice;
                 
 
               return (
@@ -409,7 +419,14 @@ const handleAddToCart = async (product) => {
                   <div style={styles.category}>{productIdLabel}</div>
                   <div style={styles.name}>{product.name}</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                        <span style={styles.price}>${Number(product.price).toFixed(2)}</span>
+                        <span style={styles.price}>
+                          ${pricing.effectivePrice.toFixed(2)}
+                        </span>
+                        {showDiscount && (
+                          <span style={styles.listPrice}>
+                            ${pricing.listPrice.toFixed(2)}
+                          </span>
+                        )}
                       <button
                           style={styles.addToCartButton}
                           onClick={(e) => {
@@ -603,7 +620,12 @@ const styles = {
     fontSize: "1.15rem",
     fontWeight: 800,
   },
-
+  listPrice: {
+    fontSize: "0.95rem",
+    color: "#94a3b8",
+    textDecoration: "line-through",
+    marginLeft: 8,
+  },
   addToCartButton: {
     marginTop: "0.5rem",
     padding: "0.55rem 1rem",

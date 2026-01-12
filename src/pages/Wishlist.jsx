@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { wishlistAPI, cartAPI } from '../services/api';
+import { getPricingInfo } from '../utils/pricing';
 
 export default function Wishlist() {
   const navigate = useNavigate();
@@ -92,7 +93,13 @@ export default function Wishlist() {
         </div>
       ) : (
         <div style={styles.grid}>
-          {wishlist.map((product) => (
+          {wishlist.map((product) => {
+            const pricing = getPricingInfo(product);
+            const showDiscount =
+              pricing.hasDiscount &&
+              Number.isFinite(pricing.listPrice) &&
+              pricing.listPrice !== pricing.effectivePrice;
+            return (
             <div key={product.id} style={styles.card}>
             <Link to={`/products/${product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
               <img
@@ -102,7 +109,14 @@ export default function Wishlist() {
               />
               <div style={styles.content}>
                 <h3 style={styles.productName}>{product.name}</h3>
-                <p style={styles.price}>${Number(product.price).toFixed(2)}</p>
+                <p style={styles.price}>
+                  ${pricing.effectivePrice.toFixed(2)}
+                  {showDiscount && (
+                    <span style={styles.listPrice}>
+                      ${pricing.listPrice.toFixed(2)}
+                    </span>
+                  )}
+                </p>
               </div>
             </Link>
             
@@ -132,7 +146,8 @@ export default function Wishlist() {
               </div>
             </div>
           </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
@@ -234,6 +249,14 @@ const styles = {
     fontWeight: 800,
     color: '#111827',
     margin: '0.5rem 0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  listPrice: {
+    fontSize: '0.95rem',
+    color: '#94a3b8',
+    textDecoration: 'line-through',
   },
   stock: {
     marginBottom: '1rem',

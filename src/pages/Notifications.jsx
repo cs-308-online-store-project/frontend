@@ -31,8 +31,13 @@ export default function Notifications() {
     try {
       await markNotificationRead(id);
       setItems((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+        prev.map((n) =>
+          n.id === id
+            ? { ...n, is_read: true, isRead: true, read: true }
+            : n
+        )
       );
+      window.dispatchEvent(new Event("notificationsUpdated"));
     } catch (e) {
       // no-op
     }
@@ -40,8 +45,18 @@ export default function Notifications() {
 
   const onReadAll = async () => {
     try {
-      await markAllNotificationsRead();
-      setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      try {
+        await markAllNotificationsRead();
+      } catch (err) {
+        const unread = items.filter(
+          (n) => !(n.is_read ?? n.isRead ?? n.read)
+        );
+        await Promise.all(unread.map((n) => markNotificationRead(n.id)));
+      }
+      setItems((prev) =>
+        prev.map((n) => ({ ...n, is_read: true, isRead: true, read: true }))
+      );
+      window.dispatchEvent(new Event("notificationsUpdated"));
     } catch (e) {
       // no-op
     }
@@ -63,7 +78,9 @@ export default function Notifications() {
         {items.length === 0 ? (
           <div>No notifications yet.</div>
         ) : (
-          items.map((n) => (
+          items.map((n) => {
+            const isRead = n.is_read ?? n.isRead ?? n.read;
+            return (
             <div
               key={n.id}
               onClick={() => onRead(n.id)}
@@ -72,8 +89,8 @@ export default function Notifications() {
                 borderRadius: 10,
                 padding: 12,
                 cursor: "pointer",
-                opacity: n.is_read ? 0.6 : 1,
-                background: n.is_read ? "#fafafa" : "white",
+                opacity: isRead ? 0.6 : 1,
+                background: isRead ? "#fafafa" : "white",
               }}
             >
               <div style={{ fontWeight: 700 }}>{n.title}</div>
@@ -82,7 +99,8 @@ export default function Notifications() {
                 {n.created_at ? new Date(n.created_at).toLocaleString() : ""}
               </div>
             </div>
-          ))
+          );
+          })
         )}
       </div>
     </div>
