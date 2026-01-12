@@ -3,6 +3,16 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { cartAPI, productsAPI, wishlistAPI } from "../services/api";import ProductReviews from "../components/ProductReviews";
 import { getPricingInfo } from "../utils/pricing";
 
+
+const CATEGORY_MAP = {
+  1: "Hoodies & Sweatshirts",
+  2: "Graphic Tees",
+  3: "Sneakers",
+  4: "Denim",
+  5: "Accessories",
+};
+
+
 export default function ProductDetail() {
   const { id } = useParams();
   const { state } = useLocation();
@@ -198,12 +208,33 @@ const toggleWishlist = async () => {
     pricing.hasDiscount &&
     Number.isFinite(pricing.listPrice) &&
     pricing.listPrice !== pricing.effectivePrice;
-  const categoryLabel =
-    product.category?.name ||
-    product.category ||
-    product.category_name ||
-    product.category_id ||
-    "Category";
+const categoryLabel = useMemo(() => {
+  if (!product) return "Category";
+
+  // object gelirse (ideal)
+  if (typeof product.category === "object" && product.category !== null) {
+    return product.category.name;
+  }
+
+  // id veya string id gelirse
+  const raw =
+    product.category ??
+    product.category_id ??
+    product.categoryId;
+
+  const num = Number(raw);
+  if (!isNaN(num)) {
+    return CATEGORY_MAP[num] || "Uncategorized";
+  }
+
+  // direkt isim gelirse
+  if (typeof raw === "string") {
+    return raw;
+  }
+
+  return "Uncategorized";
+}, [product]);
+
   const description = product.description || "Bu ürün için açıklama bulunmuyor.";
 
   const detailFields = [
