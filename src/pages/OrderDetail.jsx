@@ -11,6 +11,7 @@ export default function OrderDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [refunds, setRefunds] = useState([]);
 
   /* ================= FIX: FUNCTION FIRST ================= */
@@ -50,10 +51,42 @@ export default function OrderDetail() {
       setGenerating(true);
       await orderAPI.generateInvoice(id);
       alert('Invoice has been sent to your email! 📧');
+      // Refresh order to get invoice_pdf field
+      await fetchOrderDetail();
     } catch (err) {
       alert('Failed to send invoice: ' + err.message);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDownloadInvoice = async () => {
+    try {
+      setDownloading(true);
+      const response = await orderAPI.downloadInvoice(id);
+      
+      // Create blob from response
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `invoice_${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        alert('Invoice not found. Please generate it first.');
+      } else {
+        alert('Failed to download invoice: ' + err.message);
+      }
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -72,7 +105,7 @@ export default function OrderDetail() {
   } catch (err) {
     const message = err.response?.data?.error;
 
-    // 🔑 Refund zaten varsa → UI’ı pending’e çek
+    // 🔑 Refund zaten varsa → UI'ı pending'e çek
     if (message?.includes('already exists')) {
       setRefunds((prev) => [
         {
@@ -290,6 +323,19 @@ export default function OrderDetail() {
             >
               {generating ? '⏳ Generating...' : '📄 Generate Invoice'}
             </button>
+            
+            {/* NEW: Download Invoice Button */}
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={downloading}
+              style={{
+                ...S.downloadBtn,
+                opacity: downloading ? 0.6 : 1,
+                cursor: downloading ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {downloading ? '⏳ Downloading...' : '💾 Download Invoice'}
+            </button>
           </div>
         </div>
 
@@ -359,7 +405,28 @@ const S = {
   summaryBox: { padding: "1rem", background: "#f9f9f9", borderRadius: "8px" },
   summaryRow: { display: "flex", justifyContent: "space-between", padding: "0.5rem 0" },
   invoiceButtons: { marginTop: '1.5rem', display: 'flex', gap: '1rem', flexDirection: 'column' },
-  generateBtn: { padding: '1rem', background: '#111', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: '600', cursor: 'pointer', transition: 'opacity 0.2s' },
+  generateBtn: { 
+    padding: '1rem', 
+    background: '#111', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '8px', 
+    fontSize: '1rem', 
+    fontWeight: '600', 
+    cursor: 'pointer', 
+    transition: 'opacity 0.2s' 
+  },
+  downloadBtn: { 
+    padding: '1rem', 
+    background: '#10b981', 
+    color: 'white', 
+    border: 'none', 
+    borderRadius: '8px', 
+    fontSize: '1rem', 
+    fontWeight: '600', 
+    cursor: 'pointer', 
+    transition: 'opacity 0.2s' 
+  },
   timeline: {},
   timelineItem: { display: "flex", gap: "1rem", marginBottom: "1.5rem" },
   timelineDot: (active) => ({ width: "16px", height: "16px", borderRadius: "50%", background: active ? "#10b981" : "#ddd", marginTop: "4px", flexShrink: 0 }),
