@@ -232,7 +232,7 @@ const categoryLabel = useMemo(() => {
     return raw;
   }
 
-  return "Uncategorized";
+  return "No Category";
 }, [product]);
 
   const description = product.description || "Bu ürün için açıklama bulunmuyor.";
