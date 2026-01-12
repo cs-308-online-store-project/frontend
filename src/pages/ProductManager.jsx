@@ -28,6 +28,7 @@ export default function ProductManager() {
   const [productsError, setProductsError] = useState(null);
   const [stockDrafts, setStockDrafts] = useState({});
   const [stockUpdatingId, setStockUpdatingId] = useState(null);
+  const [productDeletingId, setProductDeletingId] = useState(null);
   const [productModalOpen, setProductModalOpen] = useState(false);
 
   const user = useMemo(() => {
@@ -263,6 +264,32 @@ export default function ProductManager() {
       showToast('Stok güncellenemedi.', 'error');
     } finally {
       setStockUpdatingId(null);
+    }
+  };
+
+const handleProductDelete = async (productId, productName) => {
+    const confirmed = window.confirm(
+      `${productName || 'Bu ürün'} silinsin mi? Bu işlem geri alınamaz.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setProductDeletingId(productId);
+      await productsAPI.remove(productId);
+      setProducts((prev) =>
+        prev.filter((item) => (item.id ?? item._id) !== productId)
+      );
+      setStockDrafts((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+      showToast('Ürün silindi.', 'success');
+    } catch (err) {
+      console.error('Failed to delete product', err);
+      showToast('Ürün silinemedi.', 'error');
+    } finally {
+      setProductDeletingId(null);
     }
   };
 
@@ -627,6 +654,7 @@ export default function ProductManager() {
             <span style={{ flex: 1 }}>Kategori</span>
             <span style={{ flex: 0.6 }}>Fiyat</span>
             <span style={{ flex: 0.6 }}>Stok</span>
+            <span style={{ width: '140px' }}></span>
           </div>
           {products.length ? (
             products.map((item) => (
@@ -638,6 +666,17 @@ export default function ProductManager() {
                 </span>
                 <span style={{ flex: 0.6 }}>${Number(item.price || 0).toFixed(2)}</span>
                 <span style={{ flex: 0.6 }}>{item.stock ?? item.quantity_in_stock ?? 0}</span>
+                <span style={{ width: '140px' }}>
+                  <button
+                    style={styles.dangerButton}
+                    disabled={productDeletingId === (item.id ?? item._id)}
+                    onClick={() =>
+                      handleProductDelete(item.id ?? item._id, item.name)
+                    }
+                  >
+                    Sil
+                  </button>
+                </span>
               </div>
             ))
           ) : (
