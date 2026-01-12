@@ -82,8 +82,26 @@ export default function ProductManager() {
         orderService.getAllOrderItems().catch(() => []),
       ]);
 
-      const orderList = orders || [];
-      const orderMap = new Map(orderList.map((order) => [order.id, order]));
+      const normalizeList = (value) => {
+        if (Array.isArray(value)) return value;
+        const candidate =
+          value?.data?.data ||
+          value?.data?.orders ||
+          value?.data?.items ||
+          value?.orders ||
+          value?.items ||
+          value?.data ||
+          [];
+        return Array.isArray(candidate) ? candidate : [];
+      };
+
+      let orderList = normalizeList(orders);
+      let orderMap = new Map(
+        orderList.map((order) => [
+          String(order.id ?? order.order_id ?? order.orderId),
+          order,
+        ])
+      );
 
       const fallbackItems = orderList.flatMap((order) =>
         (order.items || []).map((item, idx) => ({
@@ -94,23 +112,103 @@ export default function ProductManager() {
         }))
       );
 
-      const sourceItems = orderItems?.length ? orderItems : fallbackItems;
+      const normalizedOrderItems = normalizeList(orderItems);
+      const sourceItems = normalizedOrderItems.length ? normalizedOrderItems : fallbackItems;
+
+      if (!orderList.length && sourceItems.length) {
+        orderList = [];
+        orderMap = new Map();
+      }
+
+      const formatAddress = (value) => {
+        if (!value) return null;
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object') {
+          const parts = [
+            value.name,
+            value.addressLine1 || value.line1 || value.street,
+            value.addressLine2 || value.line2,
+            value.city,
+            value.state,
+            value.postalCode || value.postal_code || value.zip,
+            value.country,
+            value.phone,
+          ].filter(Boolean);
+          if (parts.length) return parts.join(', ');
+        }
+        return null;
+      };
+
+      const resolveCustomerId = (item, order) =>
+        item.userId ||
+        item.user_id ||
+        item.customerId ||
+        item.customer_id ||
+        order.userId ||
+        order.user_id ||
+        order.customerId ||
+        order.customer_id ||
+        order.user?.id ||
+        order.user?._id ||
+        order.user?.userId ||
+        order.customer?.id ||
+        order.customer?._id ||
+        'N/A';
+
+      const resolveAddress = (item, order) =>
+        formatAddress(item.address) ||
+        formatAddress(item.shippingAddress) ||
+        formatAddress(order.address) ||
+        formatAddress(order.shippingAddress) ||
+        formatAddress(order.shipping_address) ||
+        formatAddress(order.deliveryAddress) ||
+        formatAddress(order.delivery_address) ||
+        formatAddress(order.shipping?.address) ||
+        formatAddress(order.shipping?.fullAddress) ||
+        formatAddress(order.fullAddress) ||
+        '—';
 
       const mappedDeliveries = sourceItems.map((item) => {
-        const order = orderMap.get(item.orderId) || {};
+        const resolvedOrderId =
+          item.orderId ||
+          item.order_id ||
+          item.order?.id ||
+          item.order?.order_id;
+        const orderKey = String(resolvedOrderId ?? '');
+        const order = orderMap.get(orderKey) || item.order || {};
 
         const statusValue = (order.status || item.status || 'processing')
           .replace(' ', '_')
           .toLowerCase();
 
+        const quantity = item.quantity ?? 0;
+        const unitPrice =
+          item.unitPrice ??
+          item.unit_price ??
+          item.price ??
+          0;
+        const derivedTotal = quantity && unitPrice ? quantity * unitPrice : null;
+
+        const customerId = resolveCustomerId(item, order);
+        const address = resolveAddress(item, order);
+
+        const productId = item.productId || item.product_id || 'N/A';
+
         return {
-          id: `${item.id || item.orderItemId || item.orderId}-${item.productId || 'item'}`,
-          deliveryId: item.orderId || order.id || item.id,
-          customerId: order.userId || order.customerId || 'N/A',
-          productId: item.productId || 'N/A',
-          quantity: item.quantity ?? 0,
-          totalPrice: item.totalPrice ?? item.total ?? item.price ?? order.totalPrice,
-          address: order.address || order.deliveryAddress || '—',
+          id: `${item.id || item.orderItemId || resolvedOrderId}-${productId || 'item'}`,
+          deliveryId: resolvedOrderId || order.id || item.id,
+          customerId,
+          productId,
+          quantity,
+          totalPrice:
+            item.totalPrice ??
+            item.total_price ??
+            item.total ??
+            derivedTotal ??
+            order.totalPrice ??
+            order.total_price ??
+            0,
+          address,
           status: statusValue,
         };
       });
