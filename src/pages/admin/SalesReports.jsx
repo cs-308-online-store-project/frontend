@@ -87,20 +87,32 @@ export default function SalesReports() {
       reportsAPI.getSalesReport(params),
     ]);
 
-    if (ordersResult.status === "fulfilled") {
+    const ordersOk = ordersResult.status === "fulfilled";
+    const reportOk = reportResult.status === "fulfilled";
+    const reportStatus = reportOk
+      ? null
+      : reportResult.reason?.response?.status;
+
+    if (ordersOk) {
       setOrders(normalizeOrders(ordersResult.value));
     } else {
       setOrders([]);
       setError("Failed to load invoices");
     }
 
-    if (reportResult.status === "fulfilled") {
+    if (reportOk) {
       setReport(reportResult.value?.data ?? null);
     } else {
       setReport(null);
-      setError((prev) =>
-        prev ? `${prev}. Failed to load sales report` : "Failed to load sales report"
-      );
+      if (!ordersOk) {
+        setError((prev) =>
+          prev ? `${prev}. Failed to load sales report` : "Failed to load sales report"
+        );
+      } else if (![204, 404].includes(reportStatus)) {
+        setNotice(
+          "Sales report data is unavailable. Showing totals based on orders."
+        );
+      }
     }
 
     setLoading(false);

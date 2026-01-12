@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { cartAPI, productsAPI, wishlistAPI } from "../services/api";import ProductReviews from "../components/ProductReviews";
+import { getPricingInfo } from "../utils/pricing";
+
+
+const CATEGORY_MAP = {
+  1: "Hoodies & Sweatshirts",
+  2: "Graphic Tees",
+  3: "Sneakers",
+  4: "Denim",
+  5: "Accessories",
+};
+
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -125,6 +136,7 @@ const toggleWishlist = async () => {
 
   async function addToCart() {
     if (out) return;
+    const currentPricing = getPricingInfo(product);
     
     console.log('🛒 Adding to cart:', {
       productId: product.id,
@@ -147,9 +159,9 @@ const toggleWishlist = async () => {
           id: Date.now(), // Temporary ID for guest cart
           productId: product.id,
           name: product.name,
-          unitPrice: Number(product.price),
+          unitPrice: currentPricing.effectivePrice,
           quantity: qty,
-          totalPrice: Number(product.price) * qty,
+          totalPrice: currentPricing.effectivePrice * qty,
         });
       }
       
@@ -190,13 +202,39 @@ const toggleWishlist = async () => {
 
   const availabilityText = out ? "Sold Out" : "In Stock";
   const availabilityStyle = out ? S.availabilityDanger : S.availabilityOk;
-  const totalPrice = (Number(product.price) || 0) * qty;
-  const categoryLabel =
-    product.category?.name ||
-    product.category ||
-    product.category_name ||
-    product.category_id ||
-    "Category";
+  const pricing = getPricingInfo(product);
+  const totalPrice = pricing.effectivePrice * qty;
+  const showDiscount =
+    pricing.hasDiscount &&
+    Number.isFinite(pricing.listPrice) &&
+    pricing.listPrice !== pricing.effectivePrice;
+const categoryLabel = useMemo(() => {
+  if (!product) return "Category";
+
+  // object gelirse (ideal)
+  if (typeof product.category === "object" && product.category !== null) {
+    return product.category.name;
+  }
+
+  // id veya string id gelirse
+  const raw =
+    product.category ??
+    product.category_id ??
+    product.categoryId;
+
+  const num = Number(raw);
+  if (!isNaN(num)) {
+    return CATEGORY_MAP[num] || "Uncategorized";
+  }
+
+  // direkt isim gelirse
+  if (typeof raw === "string") {
+    return raw;
+  }
+
+  return "No Category";
+}, [product]);
+
   const description = product.description || "Bu ürün için açıklama bulunmuyor.";
 
   const detailFields = [
@@ -246,7 +284,12 @@ const toggleWishlist = async () => {
         <div style={S.rightCol}>
           <div style={S.productId}>ID: #{product.id}</div>
           <h1 style={S.title}>{product.name}</h1>
-          <div style={S.price}>{currency(product.price)}</div>
+          <div style={S.priceRow}>
+            <span style={S.price}>{currency(pricing.effectivePrice)}</span>
+            {showDiscount && (
+              <span style={S.listPrice}>{currency(pricing.listPrice)}</span>
+            )}
+          </div>
           <div style={{ ...S.availability, ...availabilityStyle }}>
             {availabilityText}
             {!out && stock ? ` • ${stock} adet stokta` : ""}
@@ -468,7 +511,9 @@ const S = {
 
   brand: { fontSize: 14, marginBottom: 6 },
   title: { fontSize: 28, fontWeight: 700, margin: "0 0 6px" },
-  price: { fontSize: 22, fontWeight: 700, margin: "8px 0 16px" },
+  priceRow: { display: "flex", alignItems: "center", gap: 10, margin: "8px 0 16px" },
+  price: { fontSize: 22, fontWeight: 700 },
+  listPrice: { fontSize: 16, color: "#9ca3af", textDecoration: "line-through" },
   description: { color: "#374151", margin: "8px 0 12px", lineHeight: 1.5 },
 
   row: { display: "flex", alignItems: "center", gap: 12 },

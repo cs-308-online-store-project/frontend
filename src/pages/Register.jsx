@@ -50,17 +50,17 @@ function Register() {
         password: formData.password
       });
       
-      // Token'ı localStorage'a kaydet
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+      // Başarılı kayıt - sadece mesaj göster, redirect yok
+      if (response.data.token || response.status === 201) {
+        setMessage('✓ Registration successful! You can now sign in.');
         
-        setMessage('✓ Registration successful! Welcome to Urban Threads! 🎉');
-        
-        // 1.5 saniye sonra products sayfasına git
-        setTimeout(() => {
-          navigate('/products');
-        }, 1500);
+        // Form'u temizle
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
       }
     } catch (error) {
       console.error('Register error:', error);
@@ -329,7 +329,6 @@ const styles = {
     textAlign: 'center',
     fontSize: '0.9rem',
     fontWeight: '500',
-    animation: 'slideDown 0.3s ease-out',
   },
   footer: {
     marginTop: '2rem',
