@@ -115,7 +115,7 @@ export const userAPI = {
 
 // Reports API
 export const reportsAPI = {
-  getSalesReport: () => api.get("/reports/sales"),
+  getSalesReport: (params = {}) => api.get("/reports/sales", { params }),
 };
 
 // NOTIFICATIONS
@@ -144,5 +144,3 @@ export const refundAPI = {
 
 
 export default api;
-
-

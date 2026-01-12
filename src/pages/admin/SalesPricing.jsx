@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { productsAPI, salesManagerAPI } from "../../services/api";
+import {fetchNotifications,productsAPI,salesManagerAPI,} from "../../services/api";
 
 function normalizeProducts(data) {
   // backend farklı formatlarda dönebilir diye hepsini toparlıyoruz
@@ -28,8 +28,17 @@ export default function SalesPricing() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [notificationsError, setNotificationsError] = useState("");
 
   const selectedIds = useMemo(() => Array.from(selected), [selected]);
+  const discountNotifications = useMemo(() =>notifications.filter((item) => {
+        const text = `${item.title || ""} ${item.message || ""}`.toLowerCase();
+        return text.includes("discount") || text.includes("indirim");
+      }),
+    [notifications]
+  );
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -59,6 +68,24 @@ export default function SalesPricing() {
 
   useEffect(() => {
     fetchProducts();
+  }, []);
+  
+  const loadNotifications = async () => {
+    try {
+      setNotificationsError("");
+      setNotificationsLoading(true);
+      const data = await fetchNotifications();
+      setNotifications(Array.isArray(data.items) ? data.items : []);
+    } catch (e) {
+      setNotificationsError("Failed to load discount notifications");
+      setNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
   }, []);
 
   const toggle = (id) => {
@@ -129,6 +156,7 @@ export default function SalesPricing() {
       setDiscountRate("");
 
       await fetchProducts();
+      await loadNotifications();
     } catch (e) {
       setMsg(e?.response?.data?.message || "❌ Discount apply failed");
     } finally {
@@ -318,6 +346,45 @@ export default function SalesPricing() {
           </table>
         </div>
       )}
+
+      <div style={{ marginTop: 32 }}>
+        <h3 style={{ marginBottom: 12 }}>Discount Email Notifications</h3>
+        {notificationsLoading ? (
+          <p style={{ opacity: 0.8 }}>Loading notifications...</p>
+        ) : notificationsError ? (
+          <p style={{ color: "#ffb4b4" }}>{notificationsError}</p>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {discountNotifications.length === 0 ? (
+              <p style={{ opacity: 0.8 }}>
+                No discount notifications sent yet.
+              </p>
+            ) : (
+              discountNotifications.slice(0, 5).map((item) => (
+                <div
+                  key={item.id}
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    borderRadius: 10,
+                    padding: 12,
+                    background: "rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <div style={{ fontWeight: 700 }}>{item.title}</div>
+                  <div style={{ opacity: 0.9, marginTop: 6 }}>
+                    {item.message}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+                    {item.created_at
+                      ? new Date(item.created_at).toLocaleString()
+                      : ""}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
