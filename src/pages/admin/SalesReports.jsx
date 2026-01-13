@@ -80,12 +80,16 @@ export default function SalesReports() {
     setLoading(true);
     setError("");
     setNotice("");
+const params = {
+  start: startOfDay(startDate).toISOString(),
+  end: endOfDay(endDate).toISOString(),
+};
 
-    const params = { startDate, endDate };
-    const [ordersResult, reportResult] = await Promise.allSettled([
-      orderAPI.getOrders(),
-      reportsAPI.getSalesReport(params),
-    ]);
+const [ordersResult, reportResult] = await Promise.allSettled([
+  orderAPI.getOrders(),
+  reportsAPI.getSalesReport(params),
+]);
+
 
     const ordersOk = ordersResult.status === "fulfilled";
     const reportOk = reportResult.status === "fulfilled";
@@ -167,30 +171,27 @@ export default function SalesReports() {
       loss: loss ?? Math.max(0, revenue - profit),
     };
   }, [filteredOrders, report]);
-  const chartSeries = useMemo(() => {
-    const series =
-      report?.chart ||
-      report?.series ||
-      report?.data ||
-      report?.summary?.series;
-    if (Array.isArray(series)) {
-      return series.map((item) => ({
-        label: item.label || item.date || item.period || "-",
-        revenue: safeNumber(item.revenue) ?? 0,
-        profit: safeNumber(item.profit) ?? safeNumber(item.netProfit) ?? 0,
-      }));
-    }
+const chartSeries = useMemo(() => {
+  return buildSeriesFromOrders(filteredOrders);
+}, [filteredOrders]);
 
-    return buildSeriesFromOrders(filteredOrders);
-  }, [filteredOrders, report]);
 
-  const maxValue = useMemo(() => {
-    const values = chartSeries.flatMap((item) => [
-      safeNumber(item.revenue) ?? 0,
-      safeNumber(item.profit) ?? 0,
-    ]);
-    return Math.max(...values, 1);
-  }, [chartSeries]);
+
+
+
+const maxValue = useMemo(() => {
+  const item = chartSeries[0];
+  if (!item) return 1;
+
+  return Math.max(
+    item.revenue,
+    item.profit,
+    item.loss,
+    1
+  );
+}, [chartSeries]);
+
+
 
   const handleInvoiceAction = async (orderId, action) => {
     setBusyInvoice(orderId);
@@ -299,25 +300,79 @@ export default function SalesReports() {
 
                   return (
                     <div key={item.label} style={S.chartColumn}>
-                      <div style={S.barGroup}>
-                        <div
-                          style={{
-                            ...S.bar,
-                            height: `${revenueHeight}%`,
-                            background: "#4dd0e1",
-                          }}
-                          title={`Revenue: ${formatCurrency(item.revenue)}`}
-                        />
-                        <div
-                          style={{
-                            ...S.bar,
-                            height: `${profitHeight}%`,
-                            background: "#81c784",
-                          }}
-                          title={`Profit: ${formatCurrency(item.profit)}`}
-                        />
-                      </div>
-                      <div style={S.chartLabel}>{item.label}</div>
+<div style={S.barGroup}>
+  {/* Revenue */}
+  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#4dd0e1",
+        marginBottom: 6,
+      }}
+    >
+      Revenue
+    </div>
+
+    <div
+      style={{
+        ...S.bar,
+        height: `${revenueHeight}%`,
+        background: "#4dd0e1",
+      }}
+      title={`Revenue: ${formatCurrency(item.revenue)}`}
+    />
+
+    <div
+      style={{
+        marginTop: 6,
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#4dd0e1",
+      }}
+    >
+      {formatCurrency(item.revenue)}
+    </div>
+  </div>
+
+  {/* Profit */}
+  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#81c784",
+        marginBottom: 6,
+      }}
+    >
+      Profit
+    </div>
+
+    <div
+      style={{
+        ...S.bar,
+        height: `${profitHeight}%`,
+        background: "#81c784",
+      }}
+      title={`Profit: ${formatCurrency(item.profit)}`}
+    />
+
+    <div
+      style={{
+        marginTop: 6,
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#81c784",
+      }}
+    >
+      {formatCurrency(item.profit)}
+    </div>
+  </div>
+</div>
+
+<div style={S.chartLabel}>{item.label}</div>
+
+
                     </div>
                   );
                 })}
@@ -482,12 +537,14 @@ const S = {
     height: 240,
     paddingBottom: 12,
   },
-  chartColumn: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 8,
-  },
+ chartColumn: {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 8,
+  height: "100%",
+  position: "relative", // ✅ KRİTİK SATIR
+},
   barGroup: {
     display: "flex",
     gap: 6,
